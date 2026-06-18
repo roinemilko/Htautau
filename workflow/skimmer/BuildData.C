@@ -5,6 +5,7 @@
 #include <string>
 #include "BuildData.h"
 #include "helpers_v2.h"
+#include "ROOT/RDataFrame.hxx"
 
 
 // Safe wrappers for some of the helper functions
@@ -30,9 +31,6 @@ void BuildData(
         std::cerr << "You have to include somehting" <<std::endl;
         return;
     }
-
-    gInterpreter->Declare("#include \"skimmer/BuildData.h\"");
-    gInterpreter->Declare("#include \"skimmer/helpers_v2.h\"");
     
     ROOT::EnableImplicitMT();
     ROOT::RDataFrame df("Events", file_pattern);
@@ -231,7 +229,7 @@ void BuildData(
         std::cout << "Skimming AK4... " <<std::endl;
         df_AK4.Snapshot(
             "AK4_skimmed_tree",
-            "Jet.root",
+            "jets/Jet.root",
             AK4_dict
         );
     }
@@ -240,7 +238,7 @@ void BuildData(
         std::cout << "Skimming AK8" <<std::endl;
         df_AK8.Snapshot(
             "AK8_skimmed_tree",
-            "fatJet.root",
+            "jets/fatJet.root",
             AK8_dict
         );
     }
@@ -249,7 +247,7 @@ void BuildData(
         std::cout << "Skimming AK15" <<std::endl;
         df_AK15.Snapshot(
             "AK15_skimmed_tree",
-            "AK15.root",
+            "jets/AK15.root",
             AK15_dict
         );
 

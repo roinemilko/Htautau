@@ -1,0 +1,32 @@
+DIR = "/eos/user/m/mroine/NanoTuples/test_data"
+
+_raw = config.get("exclude_jets"    , "none")
+EXCLUDED = set() if _raw == "none" else {x.strip() for x in _raw.split(",")}
+HADHAD = config.get("require_hadhad", "n") == "y"
+ 
+def get_outputs(wildcards = None):
+    outputs = []
+    if "AK4" not in EXCLUDED:
+        outputs.append("Jet.root")
+    if "AK8" not in EXCLUDED:
+        outputs.append("fatJet.root")
+    if "AK15" not in EXCLUDED:
+        outputs.append("AK15.root")
+    return outputs
+
+
+rule skim_data:
+    input:
+        data_dir = directory(DIR)
+    output:
+        expand("jets/{name}", name=get_outputs())
+    params:
+        pattern = f"{DIR}/*.root",
+        include_ak4 = "true" if "AK4" not in EXCLUDED else "false",
+        include_ak8 = "true" if "AK8" not in EXCLUDED else "false",
+        include_ak15 = "true" if "AK15" not in EXCLUDED else "false",
+        require_hadhad = "true" if HADHAD else "false",
+    shell:
+        """
+        root -l -b -q 'skimmer/BuildData.C+("{params.pattern}", {params.include_ak4}, {params.include_ak8}, {params.include_ak15}, {params.require_hadhad})'
+        """

@@ -1,0 +1,4 @@
+exclude_jets: none
+require_hadhad: false
+latency-wait: 120
+cores: all
