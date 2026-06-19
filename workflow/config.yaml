@@ -1,4 +1,4 @@
-exclude_jets: none
-require_hadhad: false
+exclude: none
+require-hadhad: false
 latency-wait: 120
 cores: all

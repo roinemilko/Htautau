@@ -8,10 +8,11 @@
 #include <TObjArray.h>
 #include <TObjString.h>
 #include <iostream>
+#include <vector>
 
 void Plots(bool AK4 = true, bool AK8 = true, bool AK15 = true, 
-        const char* params = "mass/pt, eta",
-        const char* save_path = "/eos/user/m/mroine/www/jet_plots.png") {
+        const char* params = "X_mass/X_pt, X_eta",
+        const char* save_path = "/eos/user/m/mroine/www/") {
 
     TString paramStr(params);
     TObjArray* paramArray = paramStr.Tokenize(",");
@@ -26,7 +27,7 @@ void Plots(bool AK4 = true, bool AK8 = true, bool AK15 = true,
     TTree *AK4_tree = nullptr, *AK8_tree = nullptr, *AK15_tree = nullptr;
 
     if (AK4) {
-        AK4_f = new TFile("Jet.root", "READ");
+        AK4_f = new TFile("jets/Jet.root", "READ");
         if (AK4_f) {AK4_tree = (TTree*)AK4_f->Get("AK4_skimmed_tree");}
         else {
             std::cerr << "Couldn't open file Jet.root" << std::endl;
@@ -34,7 +35,7 @@ void Plots(bool AK4 = true, bool AK8 = true, bool AK15 = true,
     }
 
     if (AK8) {
-        AK8_f = new TFile("fatJet.root", "READ");
+        AK8_f = new TFile("jets/fatJet.root", "READ");
         if (AK8_f) {AK8_tree = (TTree*)AK8_f->Get("AK8_skimmed_tree");}
         else {
             std::cerr << "Couldn't open file fatJet.root" << std::endl;
@@ -42,7 +43,7 @@ void Plots(bool AK4 = true, bool AK8 = true, bool AK15 = true,
     }
 
     if (AK15) {
-        AK15_f = new TFile("AK15.root", "READ");
+        AK15_f = new TFile("jets/AK15.root", "READ");
         if (AK15_f) {AK15_tree = (TTree*)AK15_f->Get("AK15_skimmed_tree");}
         else {
             std::cerr << "Couldn't open file AK15.root" << std::endl;
@@ -61,7 +62,7 @@ void Plots(bool AK4 = true, bool AK8 = true, bool AK15 = true,
         baseExpr.ReplaceAll(" ", ""); 
 
         TString hist_title = baseExpr;
-        hist_title.ReplaceAll("{jet}", "");
+        hist_title.ReplaceAll("X", "");
         hist_title.ReplaceAll("_", "");
 
         // https://root.cern.ch/doc/master/classTHStack.html
@@ -70,7 +71,7 @@ void Plots(bool AK4 = true, bool AK8 = true, bool AK15 = true,
 
         if (AK4 && AK4_tree) {
             TString expr = baseExpr;
-            expr.ReplaceAll("{jet}", "ak4"); 
+            expr.ReplaceAll("X", "ak4"); 
             
             // Unique name for every hist
             TString hName = Form("h4_%d", i);
@@ -88,7 +89,7 @@ void Plots(bool AK4 = true, bool AK8 = true, bool AK15 = true,
 
         if (AK8 && AK8_tree) {
             TString expr = baseExpr;
-            expr.ReplaceAll("{jet}", "fj"); 
+            expr.ReplaceAll("X", "fj"); 
             
             TString hName = Form("h8_%d", i);
             AK8_tree->Draw(expr + ">>" + hName);
@@ -104,7 +105,7 @@ void Plots(bool AK4 = true, bool AK8 = true, bool AK15 = true,
 
         if (AK15 && AK15_tree) {
             TString expr = baseExpr;
-            expr.ReplaceAll("{jet}", "ak15"); 
+            expr.ReplaceAll("X", "ak15"); 
             
             TString hName = Form("h15_%d", i);
             AK15_tree->Draw(expr + ">>" + hName, "", "goff");
@@ -122,5 +123,6 @@ void Plots(bool AK4 = true, bool AK8 = true, bool AK15 = true,
         hs->GetXaxis()->SetTitle(hist_title); // Label the X-axis
         leg->Draw();
     }
+
     c1->SaveAs(save_path);
 }

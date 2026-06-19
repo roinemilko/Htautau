@@ -1,32 +1,98 @@
+import glob
+
 DIR = "/eos/user/m/mroine/NanoTuples/test_data"
+INPUT_FILES = glob.glob(f"{DIR}/*.root")
 
-_raw = config.get("exclude_jets"    , "none")
-EXCLUDED = set() if _raw == "none" else {x.strip() for x in _raw.split(",")}
-HADHAD = config.get("require_hadhad", "n") == "y"
- 
-def get_outputs(wildcards = None):
-    outputs = []
-    if "AK4" not in EXCLUDED:
-        outputs.append("Jet.root")
-    if "AK8" not in EXCLUDED:
-        outputs.append("fatJet.root")
-    if "AK15" not in EXCLUDED:
-        outputs.append("AK15.root")
-    return outputs
+_excluded_str = config.get("exclude", "")
+EXCLUDED_JETS = [x.strip() for x in _excluded_str.split(",")] if _excluded_str else []
 
+HADHAD = "true" if config.get("require-hadhad", "n") == "y" else "false"
+PLOT_PARAMS = config.get("params", "X_mass/X_pt, X_eta")
+PLOT_DIR = config.get("plot-dir", "/eos/user/m/mroine/www/")
 
-rule skim_data:
+JET_FILES = {
+    "AK4": "jets/Jet.root",
+    "AK8": "jets/fatJet.root",
+    "AK15": "jets/AK15.root"
+}
+
+REQUESTED_JETS = [j for j in JET_FILES.keys() if j not in EXCLUDED_JETS]
+
+_ak4_str  = "Jet_"    if "AK4"  in REQUESTED_JETS else ""
+_ak8_str  = "FatJet_" if "AK8"  in REQUESTED_JETS else ""
+_ak15_str = "AK15_"   if "AK15" in REQUESTED_JETS else ""
+
+_clean = (
+    PLOT_PARAMS
+    .replace("X", "")
+    .replace("_", "")
+    .replace(" ", "")
+    .replace(",", "_")
+    .replace("/", "over")
+
+)
+
+PLOT_PATH = f"{PLOT_DIR}{_ak4_str}{_ak8_str}{_ak15_str}{_clean}_plot.png"
+
+rule all:
     input:
-        data_dir = directory(DIR)
+        PLOT_PATH
+
+rule skim:
+    input:
+        [JET_FILES[j] for j in REQUESTED_JETS if j in JET_FILES]
+
+
+rule skim_ak4:
+    input:
+        INPUT_FILES
     output:
-        expand("jets/{name}", name=get_outputs())
+        "jets/Jet.root"
     params:
         pattern = f"{DIR}/*.root",
-        include_ak4 = "true" if "AK4" not in EXCLUDED else "false",
-        include_ak8 = "true" if "AK8" not in EXCLUDED else "false",
-        include_ak15 = "true" if "AK15" not in EXCLUDED else "false",
-        require_hadhad = "true" if HADHAD else "false",
+        hadhad = HADHAD
     shell:
         """
-        root -l -b -q 'skimmer/BuildData.C+("{params.pattern}", {params.include_ak4}, {params.include_ak8}, {params.include_ak15}, {params.require_hadhad})'
+        root -l -b -q 'skimmer/BuildData.C+("{params.pattern}", true, false, false, {params.hadhad})'
+        """
+
+rule skim_ak8:
+    input:
+        INPUT_FILES
+    output:
+        "jets/fatJet.root"
+    params:
+        pattern = f"{DIR}/*.root",
+        hadhad = HADHAD
+    shell:
+        """
+        root -l -b -q 'skimmer/BuildData.C+("{params.pattern}", false, true, false, {params.hadhad})'
+        """
+
+rule skim_ak15:
+    input:
+        INPUT_FILES
+    output:
+        "jets/AK15.root"
+    params:
+        pattern = f"{DIR}/*.root",
+        hadhad = HADHAD
+    shell:
+        """
+        root -l -b -q 'skimmer/BuildData.C+("{params.pattern}", false, false, true, {params.hadhad})'
+        """
+
+rule plot:
+    input:
+        [JET_FILES[j] for j in REQUESTED_JETS if j in JET_FILES]
+    output:
+        PLOT_PATH
+    params:
+        ak4 = "true" if "AK4" in REQUESTED_JETS else "false",
+        ak8 = "true" if "AK8" in REQUESTED_JETS else "false",
+        ak15 = "true" if "AK15" in REQUESTED_JETS else "false",
+        plot_params = PLOT_PARAMS
+    shell:
+        """
+        root -l -b -q 'plotter/Plots.C+({params.ak4}, {params.ak8}, {params.ak15}, "{params.plot_params}", "{output}")'
         """
