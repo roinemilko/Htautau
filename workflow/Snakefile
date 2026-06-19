@@ -1,11 +1,12 @@
 import glob
 
-DIR = "/eos/user/m/mroine/NanoTuples/test_data"
+
 INPUT_FILES = glob.glob(f"{DIR}/*.root")
 
 _excluded_str = config.get("exclude", "")
 EXCLUDED_JETS = [x.strip() for x in _excluded_str.split(",")] if _excluded_str else []
 
+DATA_DIR = config.get("data-dir", "/eos/user/m/mroine/NanoTuples/test_data")
 HADHAD = "true" if config.get("require-hadhad", "n") == "y" else "false"
 PLOT_PARAMS = config.get("params", "X_mass/X_pt, X_eta")
 PLOT_DIR = config.get("plot-dir", "/eos/user/m/mroine/www/")
