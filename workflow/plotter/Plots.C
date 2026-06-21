@@ -12,7 +12,8 @@
 
 void Plots(bool AK4 = true, bool AK8 = true, bool AK15 = true, 
         const char* params = "X_mass/X_pt, X_eta",
-        const char* save_path = "/eos/user/m/mroine/www/") {
+        const char* save_path = "/eos/user/m/mroine/www/",
+        bool normalize = true) {
 
     TString paramStr(params);
     TObjArray* paramArray = paramStr.Tokenize(",");
@@ -84,6 +85,7 @@ void Plots(bool AK4 = true, bool AK8 = true, bool AK15 = true,
             if (h) {
                 h->SetLineColor(kBlue);
                 h->SetLineWidth(2);
+                if (normalize) {h->Scale(1./h->Integral());}
                 hs->Add(h);
                 leg->AddEntry(h, "AK4", "l");
             }
@@ -105,6 +107,7 @@ void Plots(bool AK4 = true, bool AK8 = true, bool AK15 = true,
             if (h) {
                 h->SetLineColor(kRed);
                 h->SetLineWidth(2);
+                if (normalize) {h->Scale(1./h->Integral());}
                 hs->Add(h);
                 leg->AddEntry(h, "AK8", "l");
             }
@@ -124,13 +127,24 @@ void Plots(bool AK4 = true, bool AK8 = true, bool AK15 = true,
             if (h) {
                 h->SetLineColor(kGreen + 2);
                 h->SetLineWidth(2);
+                if (normalize) {h->Scale(1./h->Integral());}
                 hs->Add(h); 
                 leg->AddEntry(h, "AK15", "l");
             }
         }
 
+
+        gPad->SetLeftMargin(0.15);
         hs->Draw("NOSTACK HIST");
-        hs->GetXaxis()->SetTitle(hist_title); // Label the X-axis
+        gPad->Update();
+        hs->GetXaxis()->SetTitle(hist_title); 
+
+        if (normalize) {
+            hs->GetYaxis()->SetTitle("Fraction of jets");
+        } else {
+            hs->GetYaxis()->SetTitle("# of jets");
+        }
+        hs->GetYaxis()->SetTitleOffset(2.5);
         leg->Draw();
     }
 
