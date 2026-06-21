@@ -39,14 +39,16 @@ This will skim all three jets and plot their $m/p_t$ and $\eta$ side by side. Th
 | :--- | :--- | :--- |
 | `exclude` | None | exclude jet types |
 | `params` | `"X_mass/X_pt, X_eta"` | Variables to plot. Use `X` as a placeholder for jet prefixes. |
+| 'normalize' | 'true' | Whether to normalise the histogram to [0,1] (to effectively compare distributions with uneven data)
 | `data-dir` |  | Directory containing the raw NanoAOD `.root` files. |
 | `plot-dir` |  | Destination directory path for plots. |
 | `require-hadhad` | `"n"` | require truth-level hadhad matching |
 
 For example, running
 ```
-snakemake plot --config exclude=AK4 params="X_mass, X_pt, X_eta" --cores all
+snakemake plot --config params="X_mass/X_pt, abs(X_eta), abs(X_phi)" --cores "all"
 ```
 would first skim AK8 and AK15 jets from MC data and save something like this
-<img width="1448" height="456" alt="image" src="https://github.com/user-attachments/assets/5f7b7be2-bae2-456b-9396-eb5685176eac" />
-to `FatJet_AK15_mass_pt_eta_plot.png`.
+<img width="985" height="462" alt="image" src="https://github.com/user-attachments/assets/41ab01c6-50e9-48f8-8bd6-29c56a8f75ab" />
+
+to `Jet_FatJet_AK15_massoverpt_abs(eta)_plot.png`.
