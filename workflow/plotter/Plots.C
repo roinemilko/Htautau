@@ -75,7 +75,10 @@ void Plots(bool AK4 = true, bool AK8 = true, bool AK15 = true,
             
             // Unique name for every hist
             TString hName = Form("h4_%d", i);
-            AK4_tree->Draw(expr + ">>" + hName);
+            if (AK4_tree->Draw(expr + ">>" + hName, "") == -1) {
+                std::cerr << "Parameter " << expr << " doesn't exist!"  << std::endl;
+                return;
+            };
             TH1F* h = (TH1F*)gDirectory->Get(hName);
 
             if (h) {
@@ -92,7 +95,11 @@ void Plots(bool AK4 = true, bool AK8 = true, bool AK15 = true,
             expr.ReplaceAll("X", "fj"); 
             
             TString hName = Form("h8_%d", i);
-            AK8_tree->Draw(expr + ">>" + hName);
+
+            if (AK8_tree->Draw(expr + ">>" + hName, "") == -1) {
+                std::cerr << "Parameter " << expr << " doesn't exist!"  << std::endl;
+                return;
+            };
             
             TH1F* h = (TH1F*)gDirectory->Get(hName);
             if (h) {
@@ -108,7 +115,10 @@ void Plots(bool AK4 = true, bool AK8 = true, bool AK15 = true,
             expr.ReplaceAll("X", "ak15"); 
             
             TString hName = Form("h15_%d", i);
-            AK15_tree->Draw(expr + ">>" + hName, "", "goff");
+            if (AK15_tree->Draw(expr + ">>" + hName, "") == -1) {
+                std::cerr << "Parameter " << expr << " doesn't exist!"  << std::endl;
+                return;
+            };
             
             TH1F* h = (TH1F*)gDirectory->Get(hName);
             if (h) {
