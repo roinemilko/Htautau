@@ -49,11 +49,11 @@ const std::vector<std::string> AK4_dict = {
     "dR_ak4_tau2",
     "dR_ak4_H",
 
-    "PFMET_pt",
-    "PFMET_phi",
-    "PFMET_significance",
-    "PFMET_sumEt",
-    "PFMET_sumPtUnclustered",
+    "RawPFMET_pt",
+    "RawPFMET_phi",
+    "PuppiMET_significance",
+    "PuppiMET_sumEt",
+    "PuppiMET_sumPtUnclustered",
     "PuppiMET_pt",
     "PuppiMET_phi"
 };
@@ -93,11 +93,11 @@ const std::vector<std::string> AK8_dict = {
     "dR_fj_H",
     "dR_tau1_tau2",
 
-    "PFMET_pt",
-    "PFMET_phi",
-    "PFMET_significance",
-    "PFMET_sumEt",
-    "PFMET_sumPtUnclustered",
+    "RawPFMET_pt",
+    "RawPFMET_phi",
+    "PuppiMET_significance",
+    "PuppiMET_sumEt",
+    "PuppiMET_sumPtUnclustered",
     "PuppiMET_pt",
     "PuppiMET_phi"
 };
@@ -138,11 +138,11 @@ const std::vector<std::string> AK15_dict = {
     "dR_ak15_H",
     "dR_tau1_tau2",
 
-    "PFMET_pt",
-    "PFMET_phi",
-    "PFMET_significance",
-    "PFMET_sumEt",
-    "PFMET_sumPtUnclustered",
+    "RawPFMET_pt",
+    "RawPFMET_phi",
+    "PuppiMET_significance",
+    "PuppiMET_sumEt",
+    "PuppiMET_sumPtUnclustered",
     "PuppiMET_pt",
     "PuppiMET_phi"
 };

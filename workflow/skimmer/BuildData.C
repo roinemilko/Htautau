@@ -39,8 +39,7 @@ void BuildData(
     // Sometimes MET is missing so safeguard against that
     ROOT::RDF::RNode df_safe = df;
     std::vector<std::string> check_missing = {
-            "PFMET_pt", "PFMET_phi", "PFMET_sumEt",
-            "PFMET_significance", "PFMET_sumPtUnclustered", 
+            "RawPFMET_pt", "RawPFMET_phi", "RawPFMET_sumEt", 
             "PuppiMET_pt", "PuppiMET_phi", "PuppiMET_sumEt"
     };
 
@@ -112,8 +111,8 @@ void BuildData(
                                 "}")
 
             .Define("dphi_ak4_pfmet", "ROOT::VecOps::RVec<float>{"
-                                    "  dphi(ak4_phi[0], PFMET_phi),"
-                                    "  dphi(ak4_phi[1], PFMET_phi)"
+                                    "  dphi(ak4_phi[0], RawPFMET_phi),"
+                                    "  dphi(ak4_phi[1], RawPFMET_phi)"
                                     "}")
 
             .Define("dphi_ak4_puppimet", "ROOT::VecOps::RVec<float>{"
@@ -122,8 +121,8 @@ void BuildData(
                                 "}")
 
             .Define("ak4_pt_minus_pfmet_pt", "ROOT::VecOps::RVec<float>{"
-                                            " (PFMET_pt > kMissing) ? ak4_pt[0] - PFMET_pt : kMissing,"
-                                            " (PFMET_pt > kMissing) ? ak4_pt[1] - PFMET_pt : kMissing"
+                                            " (RawPFMET_pt > kMissing) ? ak4_pt[0] - RawPFMET_pt : kMissing,"
+                                            " (RawPFMET_pt > kMissing) ? ak4_pt[1] - RawPFMET_pt : kMissing"
                                             "}")
 
             .Define("ak4_pt_minus_puppimet_pt", "ROOT::VecOps::RVec<float>{"
@@ -132,8 +131,8 @@ void BuildData(
                                                 "}")    
                                                 
             .Define("pfmet_over_ak4_pt", "ROOT::VecOps::RVec<float>{"
-                                        " safeRatio(PFMET_pt, ak4_pt[0]),"
-                                        " safeRatio(PFMET_pt, ak4_pt[1])"
+                                        " safeRatio(RawPFMET_pt, ak4_pt[0]),"
+                                        " safeRatio(RawPFMET_pt, ak4_pt[1])"
                                         "}")
             .Define("puppimet_over_ak4_pt", "ROOT::VecOps::RVec<float>{"
                                             "safeRatio(PuppiMET_pt, ak4_pt[0]),"
@@ -171,11 +170,11 @@ void BuildData(
             .Define("genTau2_eta", "GenPart_eta[matchedTau2Idx]")
             .Define("genTau2_phi", "GenPart_phi[matchedTau2Idx]")
 
-            .Define("dphi_fj_pfmet", "dphi(fj_phi, PFMET_phi)")
+            .Define("dphi_fj_pfmet", "dphi(fj_phi, RawPFMET_phi)")
             .Define("dphi_fj_puppimet", "dphi(fj_phi,  PuppiMET_phi)")
-            .Define("fj_pt_minus_pfmet_pt", "(fj_pt > kMissing && PFMET_pt > kMissing) ? fj_pt - PFMET_pt : kMissing")
+            .Define("fj_pt_minus_pfmet_pt", "(fj_pt > kMissing && RawPFMET_pt > kMissing) ? fj_pt - RawPFMET_pt : kMissing")
             .Define("fj_pt_minus_puppimet_pt", "(fj_pt > kMissing && PuppiMET_pt > kMissing) ? fj_pt - PuppiMET_pt : kMissing")
-            .Define("pfmet_over_fj_pt", "safeRatio(PFMET_pt, fj_pt)")
+            .Define("pfmet_over_fj_pt", "safeRatio(RawPFMET_pt, fj_pt)")
             .Define("puppimet_over_fj_pt", "safeRatio(PuppiMET_pt, fj_pt)")
             .Define("dR_fj_tau1", "dR(fj_eta, fj_phi, genTau1_eta, genTau1_phi)")
             .Define("dR_fj_tau2", "dR(fj_eta, fj_phi, genTau2_eta, genTau2_phi)")
@@ -213,11 +212,11 @@ void BuildData(
             .Define("genTau2_eta", "GenPart_eta[matchedTau2Idx]")
             .Define("genTau2_phi", "GenPart_phi[matchedTau2Idx]")
 
-            .Define("dphi_ak15_pfmet", "dphi(ak15_phi, PFMET_phi)")
+            .Define("dphi_ak15_pfmet", "dphi(ak15_phi, RawPFMET_phi)")
             .Define("dphi_ak15_puppimet", "dphi(ak15_phi,  PuppiMET_phi)")
-            .Define("ak15_pt_minus_pfmet_pt", "(ak15_pt > kMissing && PFMET_pt > kMissing) ? ak15_pt - PFMET_pt : kMissing")
+            .Define("ak15_pt_minus_pfmet_pt", "(ak15_pt > kMissing && RawPFMET_pt > kMissing) ? ak15_pt - RawPFMET_pt : kMissing")
             .Define("ak15_pt_minus_puppimet_pt", "(ak15_pt > kMissing && PuppiMET_pt > kMissing) ? ak15_pt - PuppiMET_pt : kMissing")
-            .Define("pfmet_over_ak15_pt", "safeRatio(PFMET_pt, ak15_pt)")
+            .Define("pfmet_over_ak15_pt", "safeRatio(RawPFMET_pt, ak15_pt)")
             .Define("puppimet_over_ak15_pt", "safeRatio(PuppiMET_pt, ak15_pt)")
             .Define("dR_ak15_tau1", "dR(ak15_eta, ak15_phi, genTau1_eta, genTau1_phi)")
             .Define("dR_ak15_tau2", "dR(ak15_eta, ak15_phi, genTau2_eta, genTau2_phi)")
