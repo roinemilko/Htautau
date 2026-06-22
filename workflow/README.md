@@ -15,13 +15,17 @@ Designed to easily skim Jets/FatJets/AK15 -jets from raw MC -simulated data and 
 | `PuppiMET_sumEt` | `nHiggsTauMu` |
 | `PuppiMET_sumPtUnclustered` | `nHiggsTauE` |
 | `PuppiMET_pt` | `nHiggsTauHad` |
-| `PuppiMET_phi` | `dR_[jet]_tau1` |
-| `dphi_[jet]_pfmet` | `dR_[jet]_tau2` |
-| `dphi_[jet]_puppimet` | `dR_[jet]_H` |
-| `[jet]_pt_minus_pfmet_pt` | `dR_tau1_tau2` |
-| `[jet]_pt_minus_puppimet_pt` | |
-| `pfmet_over_[jet]_pt` | |
-| `puppimet_over_[jet]_pt` | |
+| `PuppiMET_phi` | 
+| `dphi_[jet]_pfmet` |
+| `dphi_[jet]_puppimet` |
+| `[jet]_pt_minus_pfmet_pt` |
+| `[jet]_pt_minus_puppimet_pt` | 
+| `pfmet_over_[jet]_pt` | 
+| `puppimet_over_[jet]_pt` | 
+| `dR_[jet]_tau1` |
+| `dR_[jet]_tau2` |
+| `dR_[jet]_H` |
+| `dR_tau1_tau2` |
 
 Missing values are replaced with -999.8f (not robust, fails if critical features missing). 
 
