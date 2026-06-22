@@ -9,11 +9,11 @@ Designed to easily skim Jets/FatJets/AK15 -jets from raw MC -simulated data and 
 | `[jet]_rawFactor` | `matchedHiggsIdx` |
 | `[jet]_mass_rawFactorCorrected` | `matchedTau1Idx` |
 | `[jet]_msoftdrop` | `matchedTau2Idx` |
-| `PFMET_pt` | `matched[jet]Idx` |
-| `PFMET_phi` | `nTauMatchedGood[jet]` |
-| `PFMET_significance` | `nLastCopyTauFromHiggs` |
-| `PFMET_sumEt` | `nHiggsTauMu` |
-| `PFMET_sumPtUnclustered` | `nHiggsTauE` |
+| `RawPFMET_pt` | `matched[jet]Idx` |
+| `RawPFMET_phi` | `nTauMatchedGood[jet]` |
+| `PuppiMET_significance` | `nLastCopyTauFromHiggs` |
+| `PuppiMET_sumEt` | `nHiggsTauMu` |
+| `PuppiMET_sumPtUnclustered` | `nHiggsTauE` |
 | `PuppiMET_pt` | `nHiggsTauHad` |
 | `PuppiMET_phi` | `dR_[jet]_tau1` |
 | `dphi_[jet]_pfmet` | `dR_[jet]_tau2` |
