@@ -28,11 +28,11 @@ Missing values are replaced with -999.8f (not robust, fails if critical features
 ## Guide
 To just skim some data, run 
 ```
-snakemake skim --cores all
+./run.sh skim
 ```
 with optional config flags detailed below. To plot some features, run 
 ``` 
-snakemake plot --cores "all"
+./run.sh plot
 ```
 This will skim all three jets and plot their $m/p_t$ and $\eta$ side by side. The config flags are
 | Config Flag | Default Value | Description |
@@ -42,13 +42,13 @@ This will skim all three jets and plot their $m/p_t$ and $\eta$ side by side. Th
 | 'normalize' | 'true' | Whether to normalise the histogram to [0,1] (to effectively compare distributions with uneven data)
 | `data-dir` |  | Directory containing the raw NanoAOD `.root` files. |
 | `plot-dir` |  | Destination directory path for plots. |
-| `require-hadhad` | `"n"` | require truth-level hadhad matching |
+| `require-hadhad` | `"false"` | require jets matched to hadronic decay only |
 
 For example, running
 ```
-snakemake plot --config params="X_mass/X_pt, abs(X_eta), abs(X_phi)" --cores "all"
+./run.sh plot --config params="X_mass/X_pt, abs(X_eta), abs(X_phi)"  plot-dir="/your/dir"
 ```
 would first skim AK8 and AK15 jets from MC data and save something like this
 <img width="985" height="462" alt="image" src="https://github.com/user-attachments/assets/41ab01c6-50e9-48f8-8bd6-29c56a8f75ab" />
 
-to `Jet_FatJet_AK15_massoverpt_abs(eta)_plot.png`.
+to `Jet_FatJet_AK15_massoverpt_abs(eta)_plot.png` in `/your/dir`.
