@@ -225,11 +225,13 @@ void BuildData(
             .Define("dR_tau1_tau2", "dR(genTau1_eta, genTau1_phi, genTau2_eta, genTau2_phi)");
     } 
 
+    std::string hadhad = require_hadhad ? "_hadhad" : "";
+
     if (include_AK4) {
         std::cout << "Skimming AK4... " <<std::endl;
         df_AK4.Snapshot(
             "AK4_skimmed_tree",
-            "jets/Jet.root",
+            "jets/Jet" + hadhad + ".root",
             AK4_dict
         );
     }
@@ -238,7 +240,7 @@ void BuildData(
         std::cout << "Skimming AK8" <<std::endl;
         df_AK8.Snapshot(
             "AK8_skimmed_tree",
-            "jets/fatJet.root",
+            "jets/fatJet" + hadhad + ".root",
             AK8_dict
         );
     }
@@ -247,7 +249,7 @@ void BuildData(
         std::cout << "Skimming AK15" <<std::endl;
         df_AK15.Snapshot(
             "AK15_skimmed_tree",
-            "jets/AK15.root",
+            "jets/AK15" + hadhad + ".root",
             AK15_dict
         );
 

@@ -10,10 +10,11 @@ PLOT_PARAMS = config.get("params", "X_mass/X_pt, X_eta")
 PLOT_DIR = config.get("plot-dir", "/eos/user/m/mroine/www/")
 NORMALIZE = config.get("normalize", "true");
 
+_hadhad_string = "_hadhad" if HADHAD == "true" else ""
 JET_FILES = {
-    "AK4": "jets/Jet.root",
-    "AK8": "jets/fatJet.root",
-    "AK15": "jets/AK15.root"
+    "AK4": f"jets/Jet{_hadhad_string}.root",
+    "AK8": f"jets/fatJet{_hadhad_string}.root",
+    "AK15": f"jets/AK15{_hadhad_string}.root"
 }
 
 REQUESTED_JETS = [j for j in JET_FILES.keys() if j not in EXCLUDED_JETS]
@@ -32,7 +33,15 @@ _clean = (
 
 )
 
-PLOT_PATH = f"{PLOT_DIR}{_ak4_str}{_ak8_str}{_ak15_str}{_clean}_plot.png"
+PLOT_PATH = f"{PLOT_DIR}{_ak4_str}{_ak8_str}{_ak15_str}{_clean}{_hadhad_string}_plot.png"
+
+rule compile:
+    input:
+        "skimmer/BuildData.C"
+    output:
+        "skimmer/BuildData_C.so"
+    shell:
+        "root -l -b -q -e 'int status = gSystem->CompileMacro(\"skimmer/BuildData.C\", \"kf\"); gSystem->Exit(status == 1 ? 0 : 1);'"
 
 rule all:
     input:
@@ -45,9 +54,10 @@ rule skim:
 
 rule skim_ak4:
     input:
-        INPUT_FILES
+        INPUT_FILES,
+        "skimmer/BuildData_C.so"
     output:
-        "jets/Jet.root"
+        f"jets/Jet{_hadhad_string}.root"
     params:
         pattern = f"{DATA_DIR}/*.root",
         hadhad = HADHAD
@@ -58,9 +68,10 @@ rule skim_ak4:
 
 rule skim_ak8:
     input:
-        INPUT_FILES
+        INPUT_FILES,
+        "skimmer/BuildData_C.so"
     output:
-        "jets/fatJet.root"
+        f"jets/fatJet{_hadhad_string}.root"
     params:
         pattern = f"{DATA_DIR}/*.root",
         hadhad = HADHAD
@@ -71,9 +82,10 @@ rule skim_ak8:
 
 rule skim_ak15:
     input:
-        INPUT_FILES
+        INPUT_FILES,
+        "skimmer/BuildData_C.so"
     output:
-        "jets/AK15.root"
+        f"jets/AK15{_hadhad_string}.root"
     params:
         pattern = f"{DATA_DIR}/*.root",
         hadhad = HADHAD
