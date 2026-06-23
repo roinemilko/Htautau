@@ -147,4 +147,16 @@ const std::vector<std::string> AK15_dict = {
     "PuppiMET_phi"
 };
 
+const std::vector<std::string> raw_data_dict = {
+    "RawPFMET_pt",
+    "RawPFMET_phi",   
+    "PuppiMET_pt",
+    "PuppiMET_phi",
+    "truthHiggsIdx_raw",
+    "genH_pt_raw",
+    "genH_eta_raw",
+    "genH_phi_raw",
+    "dR_tau1_tau2_raw"
+};
+
 #endif

@@ -49,8 +49,22 @@ rule all:
 
 rule skim:
     input:
-        [JET_FILES[j] for j in REQUESTED_JETS if j in JET_FILES]
+        [JET_FILES[j] for j in REQUESTED_JETS if j in JET_FILES],
+        f"jets/RawEventInfo{_hadhad_string}.root"
 
+rule skim_raw_data:
+    input:
+        INPUT_FILES,
+        "skimmer/BuildData_C.so"
+    output:
+        f"jets/RawEventInfo{_hadhad_string}.root"
+    params:
+        pattern = f"{DATA_DIR}/*.root",
+        hadhad = HADHAD
+    shell:
+        """
+        root -l -b -q 'skimmer/BuildData.C+("{params.pattern}", false, false, false, true, {params.hadhad})'
+        """
 
 rule skim_ak4:
     input:
@@ -63,7 +77,7 @@ rule skim_ak4:
         hadhad = HADHAD
     shell:
         """
-        root -l -b -q 'skimmer/BuildData.C+("{params.pattern}", true, false, false, {params.hadhad})'
+        root -l -b -q 'skimmer/BuildData.C+("{params.pattern}", true, false, false, false, {params.hadhad})'
         """
 
 rule skim_ak8:
@@ -77,7 +91,7 @@ rule skim_ak8:
         hadhad = HADHAD
     shell:
         """
-        root -l -b -q 'skimmer/BuildData.C+("{params.pattern}", false, true, false, {params.hadhad})'
+        root -l -b -q 'skimmer/BuildData.C+("{params.pattern}", false, true, false, false, {params.hadhad})'
         """
 
 rule skim_ak15:
@@ -91,7 +105,7 @@ rule skim_ak15:
         hadhad = HADHAD
     shell:
         """
-        root -l -b -q 'skimmer/BuildData.C+("{params.pattern}", false, false, true, {params.hadhad})'
+        root -l -b -q 'skimmer/BuildData.C+("{params.pattern}", false, false, true, false, {params.hadhad})'
         """
 
 rule plot:

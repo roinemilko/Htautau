@@ -23,11 +23,11 @@ inline float dR(float eta1, float phi1, float eta2, float phi2) {
 
 void BuildData(
     const char* file_pattern = "nano_*.root",
-    bool include_AK4 = true, bool include_AK8 = true, bool include_AK15 = true,
+    bool include_AK4 = true, bool include_AK8 = true, bool include_AK15 = true, bool include_RawData = false,
     bool require_hadhad = false
 ) {
-    
-    if (!include_AK4 && !include_AK8 && !include_AK15) {
+
+    if (!include_AK4 && !include_AK8 && !include_AK15 && !include_RawData) {
         std::cerr << "You have to include somehting" <<std::endl;
         return;
     }
@@ -67,10 +67,27 @@ void BuildData(
         .Filter(require_hadhad ? "is_truth_hadhad == 1" : "true", "Require HadHad");
 
 
+    ROOT::RDF::RNode df_raw_event_data = df_truth;
     ROOT::RDF::RNode df_AK4 = df_truth;
     ROOT::RDF::RNode df_AK8 = df_truth;
     ROOT::RDF::RNode df_AK15 = df_truth;
 
+    if (include_RawData) {
+        df_raw_event_data = df_truth
+        .Define("truthHiggsIdx_raw", "FindTruthHiggs(GenPart_pdgId, GenPart_statusFlags)")
+        .Filter("truthHiggsIdx_raw >= 0", "Require Truth Higgs")
+        .Define("genH_pt_raw", "GenPart_pt[truthHiggsIdx_raw]")
+        .Define("genH_eta_raw", "GenPart_eta[truthHiggsIdx_raw]")
+        .Define("genH_phi_raw", "GenPart_phi[truthHiggsIdx_raw]")
+        
+        .Define("truthTauIdxs", "ROOT::VecOps::Nonzero(tauFromH)")
+        .Filter("truthTauIdxs.size() >= 2", "Require 2 taus")
+        
+        .Define("dR_tau1_tau2_raw", 
+                "dR(GenPart_eta[truthTauIdxs[0]], GenPart_phi[truthTauIdxs[0]], "
+                "   GenPart_eta[truthTauIdxs[1]], GenPart_phi[truthTauIdxs[1]])");
+
+    }
 
     if (include_AK4) {
         df_AK4 = df_truth
@@ -225,6 +242,16 @@ void BuildData(
     } 
 
     std::string hadhad = require_hadhad ? "_hadhad" : "";
+
+    if (include_RawData) {
+        std::cout << "Skimming Raw Data... " <<std::endl;
+        df_raw_event_data.Snapshot(
+            "Events",
+            "jets/RawEventInfo" + hadhad + ".root",
+            raw_data_dict
+        );
+    }
+
 
     if (include_AK4) {
         std::cout << "Skimming AK4... " <<std::endl;

@@ -58,6 +58,22 @@ inline bool HasStatusFlag(int statusFlags, int bit) {
     return (statusFlags >> bit) & 1;
 }
 
+
+// Finds the index of the truth Higgs from which the chain originates
+inline int FindTruthHiggs(
+    const ROOT::VecOps::RVec<int>& gen_pdgId, 
+    const ROOT::VecOps::RVec<int>& gen_statusFlags
+) {
+    for (size_t i = 0; i < gen_pdgId.size(); ++i) {
+        // Check that the particle is a Higgs and is final copy before decaying
+        if (std::abs(gen_pdgId[i]) == higgsPdgId && HasStatusFlag(gen_statusFlags[i], kIsLastCopy)) {
+            return static_cast<int>(i);
+        }
+    }
+    return -1; // Return -1 if no Higgs is found in the event
+}
+
+
 // Finds the closest ancestor of a particle with the type targetAncestorPdgId and returns its index or -1 if none exist.
 // Walks mother links until |pdgId| == targetAncestorPdgId; 
 inline int FindAncestorIndex(
