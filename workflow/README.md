@@ -50,9 +50,10 @@ This will skim all three jets and plot their $m/p_t$ and $\eta$ side by side. Th
 
 For example, running
 ```
-./run.sh plot --config params="X_mass/X_pt, abs(X_eta), abs(X_phi)"  plot-dir="/your/dir"
+./run.sh plot --config params="X_mass/X_pt, abs(X_eta)"  plot-dir="/your/dir"
 ```
 would first skim AK8 and AK15 jets from MC data and save something like this
-<img width="985" height="462" alt="image" src="https://github.com/user-attachments/assets/41ab01c6-50e9-48f8-8bd6-29c56a8f75ab" />
+<img width="983" height="522" alt="image" src="https://github.com/user-attachments/assets/c6d5a855-7982-425a-8d7e-9577ac078e6d" />
 
-to `Jet_FatJet_AK15_massoverpt_abs(eta)_plot.png` in `/your/dir`.
+
+to `Jet_FatJet_AK15_massoverpt_abs(eta)_plot.png` in `/your/dir`. Note that the clustering parameters are hardcoded atm to fit the workflow.
