@@ -229,7 +229,7 @@ void BuildData(
     if (include_AK4) {
         std::cout << "Skimming AK4... " <<std::endl;
         df_AK4.Snapshot(
-            "AK4_skimmed_tree",
+            "Events",
             "jets/Jet" + hadhad + ".root",
             AK4_dict
         );
@@ -238,7 +238,7 @@ void BuildData(
     if (include_AK8) {
         std::cout << "Skimming AK8" <<std::endl;
         df_AK8.Snapshot(
-            "AK8_skimmed_tree",
+            "Events",
             "jets/fatJet" + hadhad + ".root",
             AK8_dict
         );
@@ -247,7 +247,7 @@ void BuildData(
     if (include_AK15) {
         std::cout << "Skimming AK15" <<std::endl;
         df_AK15.Snapshot(
-            "AK15_skimmed_tree",
+            "Events",
             "jets/AK15" + hadhad + ".root",
             AK15_dict
         );

@@ -7,14 +7,14 @@
 #include <TTree.h>
 #include <vector>
 
-#define AK4_min_pt 30.f
-#define AK4_eta_max 2.5
+#define AK4_min_pt 30.0f
+#define AK4_eta_max 2.5f
 
-#define AK8_min_pt 312.f
-#define AK8_eta_max 2.5
+#define AK8_min_pt 200.0f
+#define AK8_eta_max 2.5f
 
-#define AK15_min_pt 167.f
-#define AK15_eta_max 2.5
+#define AK15_min_pt 0.f
+#define AK15_eta_max 2.5f
 
 constexpr Float_t kMissing = -998.f;
 
