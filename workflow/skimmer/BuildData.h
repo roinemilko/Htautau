@@ -30,6 +30,15 @@ const std::vector<std::string> AK4_dict = {
     "is_truth_ehad",
     "is_truth_muhad",
     "is_truth_hadhad",
+    "genH_pt",
+    "genH_eta",
+    "genH_phi",
+    "PV_npvsGood",
+    "Pileup_nTrueInt",
+    "PV_npvs",
+
+    "genTau1_pt",
+    "genTau2_pt",
 
     "nTauMatchedGoodAK4Jet",
     "matchedAK4JetIdx",
@@ -48,6 +57,8 @@ const std::vector<std::string> AK4_dict = {
     "dR_ak4_tau1",
     "dR_ak4_tau2",
     "dR_ak4_H",
+    "dR_tau1_tau2",
+    "genTau_pt_asym",
 
     "RawPFMET_pt",
     "RawPFMET_phi",
@@ -69,7 +80,16 @@ const std::vector<std::string> AK8_dict = {
     "nHiggsTauHad",
     "is_truth_ehad",
     "is_truth_muhad",
-    "is_truth_hadhad",   
+    "is_truth_hadhad",
+    "genH_pt",
+    "genH_eta",
+    "genH_phi",
+    "PV_npvsGood",
+    "Pileup_nTrueInt",
+    "PV_npvs",
+    "genTau1_pt",
+    "genTau2_pt",
+
 
     "matchedFatJetIdx",
     "nTauMatchedGoodFatJet",
@@ -92,6 +112,7 @@ const std::vector<std::string> AK8_dict = {
     "dR_fj_tau2",
     "dR_fj_H",
     "dR_tau1_tau2",
+    "genTau_pt_asym",
 
     "RawPFMET_pt",
     "RawPFMET_phi",
@@ -115,6 +136,15 @@ const std::vector<std::string> AK15_dict = {
     "is_truth_ehad",
     "is_truth_muhad",
     "is_truth_hadhad",
+    "genH_pt",
+    "genH_eta",
+    "genH_phi",
+    "PV_npvsGood",
+    "Pileup_nTrueInt",
+    "PV_npvs",
+    "genTau1_pt",
+    "genTau2_pt",
+
 
     "matchedAK15JetIdx",
     "nTauMatchedGoodAK15Jet",
@@ -137,6 +167,7 @@ const std::vector<std::string> AK15_dict = {
     "dR_ak15_tau2",
     "dR_ak15_H",
     "dR_tau1_tau2",
+    "genTau_pt_asym",
 
     "RawPFMET_pt",
     "RawPFMET_phi",
@@ -156,7 +187,14 @@ const std::vector<std::string> raw_data_dict = {
     "genH_pt_raw",
     "genH_eta_raw",
     "genH_phi_raw",
-    "dR_tau1_tau2_raw"
+    "dR_tau1_tau2_raw",
+    "PV_npvsGood",
+    "Pileup_nTrueInt",
+    "PV_npvs",
+    "genTau1_pt_raw",
+    "genTau2_pt_raw",
+    "genTau_pt_asym_raw",
+    "dR_fJ_nolim"
 };
 
 #endif

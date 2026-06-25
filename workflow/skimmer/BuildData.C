@@ -72,6 +72,7 @@ void BuildData(
     ROOT::RDF::RNode df_AK8 = df_truth;
     ROOT::RDF::RNode df_AK15 = df_truth;
 
+
     if (include_RawData) {
         df_raw_event_data = df_truth
         .Define("truthHiggsIdx_raw", "FindTruthHiggs(GenPart_pdgId, GenPart_statusFlags)")
@@ -83,9 +84,14 @@ void BuildData(
         .Define("truthTauIdxs", "ROOT::VecOps::Nonzero(tauFromH)")
         .Filter("truthTauIdxs.size() >= 2", "Require 2 taus")
         
+
+        .Define("genTau1_pt_raw", "GenPart_pt[truthTauIdxs[0]]")
+        .Define("genTau2_pt_raw", "GenPart_pt[truthTauIdxs[1]]")
         .Define("dR_tau1_tau2_raw", 
                 "dR(GenPart_eta[truthTauIdxs[0]], GenPart_phi[truthTauIdxs[0]], "
-                "   GenPart_eta[truthTauIdxs[1]], GenPart_phi[truthTauIdxs[1]])");
+                "   GenPart_eta[truthTauIdxs[1]], GenPart_phi[truthTauIdxs[1]])")
+        .Define("genTau_pt_asym_raw", "abs(genTau1_pt_raw - genTau2_pt_raw) / (genTau1_pt_raw + genTau2_pt_raw)")
+        .Define("dR_fJ_nolim", "MatchFatJetSanityCheck(FatJet_eta, FatJet_phi, GenPart_eta, GenPart_phi, GenPart_pdgId, GenPart_genPartIdxMother, GenPart_statusFlags)");
 
     }
 
@@ -117,6 +123,7 @@ void BuildData(
             .Define("genTau2_pt", "GenPart_pt[matchedTau2Idx]")
             .Define("genTau2_eta", "GenPart_eta[matchedTau2Idx]")
             .Define("genTau2_phi", "GenPart_phi[matchedTau2Idx]")
+            .Define("genTau_pt_asym", "abs(genTau1_pt - genTau2_pt) / (genTau1_pt + genTau2_pt)")
 
             .Define("dR_ak4_tau1", "dR(ak4_eta[0], ak4_phi[0], genTau1_eta, genTau1_phi)")
             .Define("dR_ak4_tau2", "dR(ak4_eta[1], ak4_phi[1], genTau2_eta, genTau2_phi)")
@@ -186,6 +193,8 @@ void BuildData(
             .Define("genTau2_pt", "GenPart_pt[matchedTau2Idx]")
             .Define("genTau2_eta", "GenPart_eta[matchedTau2Idx]")
             .Define("genTau2_phi", "GenPart_phi[matchedTau2Idx]")
+            .Define("genTau_pt_asym", "abs(genTau1_pt - genTau2_pt) / (genTau1_pt + genTau2_pt)")
+
 
             .Define("dphi_fj_pfmet", "dphi(fj_phi, RawPFMET_phi)")
             .Define("dphi_fj_puppimet", "dphi(fj_phi,  PuppiMET_phi)")
@@ -228,6 +237,8 @@ void BuildData(
             .Define("genTau2_pt", "GenPart_pt[matchedTau2Idx]")
             .Define("genTau2_eta", "GenPart_eta[matchedTau2Idx]")
             .Define("genTau2_phi", "GenPart_phi[matchedTau2Idx]")
+            .Define("genTau_pt_asym", "abs(genTau1_pt - genTau2_pt) / (genTau1_pt + genTau2_pt)")
+
 
             .Define("dphi_ak15_pfmet", "dphi(ak15_phi, RawPFMET_phi)")
             .Define("dphi_ak15_puppimet", "dphi(ak15_phi,  PuppiMET_phi)")

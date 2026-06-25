@@ -20,6 +20,8 @@ constexpr int electronPdgId    = 11; // is it an electron?
 constexpr int higgsPdgId       = 25; // is it Higgs?
 constexpr int safetyThreshold  = 200;
 
+
+
 // Signed delta-phi in (-pi, pi].
 inline float DeltaPhi(float phi1, float phi2) {
     constexpr float pi = 3.14159265358979323846f;
@@ -75,7 +77,7 @@ inline int FindTruthHiggs(
 
 
 // Finds the closest ancestor of a particle with the type targetAncestorPdgId and returns its index or -1 if none exist.
-// Walks mother links until |pdgId| == targetAncestorPdgId; 
+// Walks mother links until |pdgId| == targetAncestorPdgId;     
 inline int FindAncestorIndex(
     int idx,
     const ROOT::VecOps::RVec<int>& gen_pdgId,
@@ -99,7 +101,6 @@ inline int FindAncestorIndex(
 inline bool IsHadronPdgId(int pdgId) {
     return std::abs(pdgId) > 100;
 }
-
 
 // True if is the original tau from the hard H decay - That is:
 // - is a tau (page id == \pm 15)
@@ -322,6 +323,61 @@ inline ROOT::VecOps::RVec<int> MatchTwoJetsToHTauTau(
     const int jet2 = jetForTau(tau2);
     if (jet1 < 0 || jet2 < 0 || jet1 == jet2) return fail;
     return {jet1, jet2, tau1, tau2, higgsIdx};
+}
+
+inline float MatchFatJetSanityCheck(
+    const ROOT::VecOps::RVec<float>& jet_eta,
+    const ROOT::VecOps::RVec<float>& jet_phi,
+    const ROOT::VecOps::RVec<float>& gen_eta,
+    const ROOT::VecOps::RVec<float>& gen_phi,
+    const ROOT::VecOps::RVec<int>& gen_pdgId,
+    const ROOT::VecOps::RVec<int>& gen_motherIdx,
+    const ROOT::VecOps::RVec<int>& gen_statusFlags
+) {
+    ROOT::VecOps::RVec<float> dR_jets;
+
+    for (size_t jet = 0; jet < jet_eta.size(); jet++) {
+        int tau1 = -1, tau2 = -1; 
+        
+        for (int a = 0; a < static_cast<int>(gen_pdgId.size()); a++) {
+            if (!IsHardProcLastCopyTauFromHiggs(a, gen_pdgId, gen_motherIdx, gen_statusFlags)) {continue;}
+
+            const int hA = FindAncestorIndex(a, gen_pdgId, gen_motherIdx, higgsPdgId);
+            if (hA < 0) continue;   
+
+            for (int b = a + 1; b < static_cast<int>(gen_pdgId.size()); b++) {
+                if (!IsHardProcLastCopyTauFromHiggs(b, gen_pdgId, gen_motherIdx, gen_statusFlags)) continue; 
+                if (gen_pdgId[a] != -gen_pdgId[b]) continue;
+                if (FindAncestorIndex(b, gen_pdgId, gen_motherIdx, higgsPdgId) != hA) continue;
+                tau1 = a;
+                tau2 = b;               
+            }
+        }
+        
+        if (tau1 < 0 || tau2 < 0) {
+            continue; 
+        }
+        
+        float dR_tau1 = DeltaR(jet_eta[jet], jet_phi[jet], gen_eta[tau1], gen_phi[tau1]);
+        float dR_tau2 = DeltaR(jet_eta[jet], jet_phi[jet], gen_eta[tau2], gen_phi[tau2]);
+
+        if (dR_tau1 > dR_tau2) {
+            dR_jets.push_back(dR_tau1);
+        } else {
+            dR_jets.push_back(dR_tau2);
+        }
+    }
+    
+    if (dR_jets.empty()) {
+        return kMissing; 
+    }
+
+    float result = dR_jets[0];
+    for (size_t i = 1; i < dR_jets.size(); i++) {
+        if (dR_jets[i] < result) {result = dR_jets[i];}
+    }
+
+    return result;
 }
 
 #endif
