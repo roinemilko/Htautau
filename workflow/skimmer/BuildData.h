@@ -194,7 +194,9 @@ const std::vector<std::string> raw_data_dict = {
     "genTau1_pt_raw",
     "genTau2_pt_raw",
     "genTau_pt_asym_raw",
-    "dR_fJ_nolim"
+    "dR_fJ_nolim",
+    "dR_Jet_nolim",
+    "dR_AK15_nolim"
 };
 
 #endif

@@ -34,12 +34,12 @@ void SanityCheck(const char* file_hadhad = "/eos/user/m/mroine/NanoTuples/Htauta
 
         int colorIndex = 1;
 
-        for (float pt = 200; pt < 700.0f; pt = pt + 100.0f) {
+        for (float pt = 300.0; pt < 400.0; pt = pt + 5.0f) {
             TString hname = Form("hist_%d_%d", (int)pt, padNum);
 
             TTree* t;
             if (hadhad) {t = t_hadhad;} else {t = t_nohadhad;}
-            t->Draw(Form("dR_fJ_nolim >> %s(100, 0.0, 1.5)", hname.Data()), Form("genH_pt_raw >= %g && genH_pt_raw <= %g", pt, pt + 100.0f), "goff");
+            t->Draw(Form("dR_fJ_nolim[0] >> %s(100, 0.0, 1.5)", hname.Data()), Form("genH_pt_raw >= %g && genH_pt_raw <= %g", pt, pt + 100.0f), "goff");
 
             TH1F* h = (TH1F*)gDirectory->Get(hname);
             if (h) {
@@ -51,7 +51,6 @@ void SanityCheck(const char* file_hadhad = "/eos/user/m/mroine/NanoTuples/Htauta
                 h->SetFillColorAlpha(colorIndex, 0.3);
                 hs->Add(h);
 
-                // Add to legend only on pad 1, but DO NOT draw it yet
                 if (padNum == 1) {
                     TString legLabel = Form("%d #leq p_{T} < %d GeV", (int)pt, (int)(pt + 100.0f));
                     leg->AddEntry(h, legLabel, "f");
@@ -60,21 +59,19 @@ void SanityCheck(const char* file_hadhad = "/eos/user/m/mroine/NanoTuples/Htauta
                 colorIndex++;
                 if (colorIndex == 5) colorIndex++;
             }
-        } // <--- END OF THE FOR LOOP. 
+        } 
 
-        // --- EVERYTHING BELOW HAPPENS ONLY ONCE PER PAD ---
 
         hs->Draw("nostack HIST");
-        hs->GetXaxis()->SetTitle("min[max(#Delta R(jet, tau1), #Delta R(jet, tau2))]");
+        hs->GetXaxis()->SetTitle("min(max(#Delta R(jet, tau1), #Delta R(jet, tau2))");
         
         // Set specific Y-axis label based on the dataset
         if (hadhad) {
-            hs->GetYaxis()->SetTitle("Fraction of FatJets (Require HadHad)");
+            hs->GetYaxis()->SetTitle("FatJets (require hadhad)");
         } else {
-            hs->GetYaxis()->SetTitle("Fraction of FatJets");
+            hs->GetYaxis()->SetTitle("FatJets");
         }
         hs->GetYaxis()->SetTitleOffset(1.6);
-        // Draw the legend outside the loop, only on the first pad
         if (padNum == 1) {
             leg->Draw();
         }

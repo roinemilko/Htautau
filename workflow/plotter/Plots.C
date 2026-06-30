@@ -17,7 +17,8 @@ void Plots(bool AK4 = true, bool AK8 = true, bool AK15 = true,
         const char* params = "X_mass/X_pt, X_eta",
         const char* save_path = "/eos/user/m/mroine/www/",
         bool normalize = true,
-        bool require_hadhad = true) {
+        bool require_hadhad = true,
+        const char* jet_path = "jets") {
 
     TString paramStr(params);
     TObjArray* paramArray = paramStr.Tokenize(",");
@@ -34,7 +35,8 @@ void Plots(bool AK4 = true, bool AK8 = true, bool AK15 = true,
     TTree *AK4_tree = nullptr, *AK8_tree = nullptr, *AK15_tree = nullptr;
 
     if (AK4) {
-        AK4_f = new TFile("jets/Jet" + hadhad_str + ".root", "READ");
+        TString file_path = TString(jet_path) + "/Jet" + hadhad_str + ".root"; 
+        AK4_f = new TFile(file_path, "READ");
         if (AK4_f) {AK4_tree = (TTree*)AK4_f->Get("Events");}
         else {
             std::cerr << "Couldn't open file Jet.root" << std::endl;
@@ -42,7 +44,8 @@ void Plots(bool AK4 = true, bool AK8 = true, bool AK15 = true,
     }
 
     if (AK8) {
-        AK8_f = new TFile("jets/fatJet" + hadhad_str + ".root", "READ");
+        TString file_path = TString(jet_path) + "/fatJet" + hadhad_str + ".root"; 
+        AK8_f = new TFile(file_path, "READ");
         if (AK8_f) {AK8_tree = (TTree*)AK8_f->Get("Events");}
         else {
             std::cerr << "Couldn't open file fatJet.root" << std::endl;
@@ -50,7 +53,8 @@ void Plots(bool AK4 = true, bool AK8 = true, bool AK15 = true,
     }
 
     if (AK15) {
-        AK15_f = new TFile("jets/AK15" + hadhad_str + ".root", "READ");
+        TString file_path = TString(jet_path) + "/AK15" + hadhad_str + ".root"; 
+        AK15_f = new TFile(file_path, "READ");
         if (AK15_f) {AK15_tree = (TTree*)AK15_f->Get("Events");}
         else {
             std::cerr << "Couldn't open file AK15.root" << std::endl;

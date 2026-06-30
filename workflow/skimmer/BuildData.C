@@ -24,7 +24,8 @@ inline float dR(float eta1, float phi1, float eta2, float phi2) {
 void BuildData(
     const char* file_pattern = "nano_*.root",
     bool include_AK4 = true, bool include_AK8 = true, bool include_AK15 = true, bool include_RawData = false,
-    bool require_hadhad = false
+    bool require_hadhad = false,
+    const char* save_directory = "jets/"
 ) {
 
     if (!include_AK4 && !include_AK8 && !include_AK15 && !include_RawData) {
@@ -91,8 +92,9 @@ void BuildData(
                 "dR(GenPart_eta[truthTauIdxs[0]], GenPart_phi[truthTauIdxs[0]], "
                 "   GenPart_eta[truthTauIdxs[1]], GenPart_phi[truthTauIdxs[1]])")
         .Define("genTau_pt_asym_raw", "abs(genTau1_pt_raw - genTau2_pt_raw) / (genTau1_pt_raw + genTau2_pt_raw)")
-        .Define("dR_fJ_nolim", "MatchFatJetSanityCheck(FatJet_eta, FatJet_phi, GenPart_eta, GenPart_phi, GenPart_pdgId, GenPart_genPartIdxMother, GenPart_statusFlags)");
-
+        .Define("dR_fJ_nolim", "MatchJetSanityCheck(FatJet_eta, FatJet_phi, GenPart_eta, GenPart_phi, GenPart_pdgId, GenPart_genPartIdxMother, GenPart_statusFlags)")
+        .Define("dR_Jet_nolim", "MatchJetSanityCheck(Jet_eta, Jet_phi, GenPart_eta, GenPart_phi, GenPart_pdgId, GenPart_genPartIdxMother, GenPart_statusFlags)")
+        .Define("dR_AK15_nolim", "MatchJetSanityCheck(AK15Puppi_eta, AK15Puppi_phi, GenPart_eta, GenPart_phi, GenPart_pdgId, GenPart_genPartIdxMother, GenPart_statusFlags)");
     }
 
     if (include_AK4) {
@@ -253,12 +255,13 @@ void BuildData(
     } 
 
     std::string hadhad = require_hadhad ? "_hadhad" : "";
-
+    
     if (include_RawData) {
         std::cout << "Skimming Raw Data... " <<std::endl;
+        std::string out_dir = std::string(save_directory) + "/RawEventInfo" + hadhad + ".root";
         df_raw_event_data.Snapshot(
             "Events",
-            "jets/RawEventInfo" + hadhad + ".root",
+            out_dir,
             raw_data_dict
         );
     }
@@ -266,27 +269,30 @@ void BuildData(
 
     if (include_AK4) {
         std::cout << "Skimming AK4... " <<std::endl;
+        std::string out_dir = std::string(save_directory) + "/Jet" + hadhad + ".root";
         df_AK4.Snapshot(
             "Events",
-            "jets/Jet" + hadhad + ".root",
+            out_dir,
             AK4_dict
         );
     }
 
     if (include_AK8) {
         std::cout << "Skimming AK8" <<std::endl;
+        std::string out_dir = std::string(save_directory) + "/fatJet" + hadhad + ".root";
         df_AK8.Snapshot(
             "Events",
-            "jets/fatJet" + hadhad + ".root",
+            out_dir,
             AK8_dict
         );
     }
 
     if (include_AK15) {
         std::cout << "Skimming AK15" <<std::endl;
+        std::string out_dir = std::string(save_directory) + "/AK15" + hadhad + ".root";
         df_AK15.Snapshot(
             "Events",
-            "jets/AK15" + hadhad + ".root",
+            out_dir,
             AK15_dict
         );
 

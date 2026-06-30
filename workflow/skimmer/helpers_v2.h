@@ -325,7 +325,10 @@ inline ROOT::VecOps::RVec<int> MatchTwoJetsToHTauTau(
     return {jet1, jet2, tau1, tau2, higgsIdx};
 }
 
-inline float MatchFatJetSanityCheck(
+
+// Selects the best jet and saves its dR to the furthest Gentruth tau in [0]; that is, min(max(dR(jet, tau1), dR(jet, tau2))). In rest of list save just max(dR(jet tau1), dR(jet, tau2)) of each jet.
+// Falls back to setting [0] to kMissing
+inline ROOT::VecOps::RVec<float> MatchJetSanityCheck(
     const ROOT::VecOps::RVec<float>& jet_eta,
     const ROOT::VecOps::RVec<float>& jet_phi,
     const ROOT::VecOps::RVec<float>& gen_eta,
@@ -368,15 +371,23 @@ inline float MatchFatJetSanityCheck(
         }
     }
     
+    ROOT::VecOps::RVec<float> result;
+
     if (dR_jets.empty()) {
-        return kMissing; 
+        result.push_back(kMissing);
+        return result;
     }
 
-    float result = dR_jets[0];
+    float min_of_jets = dR_jets[0];
     for (size_t i = 1; i < dR_jets.size(); i++) {
-        if (dR_jets[i] < result) {result = dR_jets[i];}
+        if (dR_jets[i] < min_of_jets) {min_of_jets = dR_jets[i];}
     }
 
+    result.push_back(min_of_jets);
+
+    for (size_t i = 0; i < dR_jets.size(); i++) {
+        result.push_back(dR_jets[i]);
+    }
     return result;
 }
 

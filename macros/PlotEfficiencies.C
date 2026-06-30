@@ -15,10 +15,10 @@
     #include "TH2F.h"
 
     void PlotEfficiencies(const char* save_path = "/eos/user/m/mroine/www",
-        const char* fRaw  = "/eos/user/m/mroine/NanoTuples/Htautau/workflow/jets/RawEventInfo_hadhad.root",
-        const char* fAK4  = "/eos/user/m/mroine/NanoTuples/Htautau/workflow/jets/Jet_hadhad.root",
-        const char* fAK8  = "/eos/user/m/mroine/NanoTuples/Htautau/workflow/jets/fatJet_hadhad.root",
-        const char* fAK15 = "/eos/user/m/mroine/NanoTuples/Htautau/workflow/jets/AK15_hadhad.root"
+        const char* fRaw  = "/eos/user/m/mroine/NanoTuples/Htautau/workflow/jets/VBFHHto2B2Tau_Par-CV-1-C2V-0-C3-1_TuneCP5_13p6TeV_madgraph-pythia8/RawEventInfo_hadhad.root",
+        const char* fAK4  = "/eos/user/m/mroine/NanoTuples/Htautau/workflow/jets/VBFHHto2B2Tau_Par-CV-1-C2V-0-C3-1_TuneCP5_13p6TeV_madgraph-pythia8/Jet_hadhad.root",
+        const char* fAK8  = "/eos/user/m/mroine/NanoTuples/Htautau/workflow/jets/VBFHHto2B2Tau_Par-CV-1-C2V-0-C3-1_TuneCP5_13p6TeV_madgraph-pythia8/fatJet_hadhad.root",
+        const char* fAK15 = "/eos/user/m/mroine/NanoTuples/Htautau/workflow/jets/VBFHHto2B2Tau_Par-CV-1-C2V-0-C3-1_TuneCP5_13p6TeV_madgraph-pythia8/jets/AK15_hadhad.root"
     ) {
 
         TCanvas* c1 = new TCanvas("c1", "", 1800, 1200);
@@ -184,7 +184,7 @@
                     eff->SetLineColor(jet.color);
 
                     if (!first) {
-                        eff->SetTitle(";(genH_{T} > 200 GeV);Matching Efficiency");
+                        eff->SetTitle(";(genH_{T} > 300 GeV);Matching Efficiency");
                         eff->Draw("AP");
                         first = eff;
                         gPad->Update();

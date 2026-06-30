@@ -3,19 +3,23 @@ import glob
 _excluded_str = config.get("exclude", "")
 EXCLUDED_JETS = [x.strip() for x in _excluded_str.split(",")] if _excluded_str else []
 
-DATA_DIR = config.get("data-dir", "/eos/cms/store/group/phys_higgs/ttHcc/NanoAOD/NanoTuples/2024/mc/GluGluH-HTo2Tau_Par-M-125_TuneCP5_13p6TeV_powheg-pythia8/NanoTuples-uParTv3-parTlepID-NanoAODv15_RunIII2024Summer24MiniAODv6-150X_v2-v2/260608_185433/0000")
+DATA_DIR = config.get("data-dir", "/eos/cms/store/group/phys_higgs/ttHcc/NanoAOD/NanoTuples/2024/mc/VBFHHto2B2Tau_Par-CV-1-C2V-0-C3-1_TuneCP5_13p6TeV_madgraph-pythia8/NanoTuples-uParTv3-parTlepID-NanoAODv15_RunIII2024Summer24MiniAODv6-150X_v2-v2/260608_185815/0000")
 INPUT_FILES = glob.glob(f"{DATA_DIR}/*.root")
 HADHAD = config.get("require-hadhad", "true")
 PLOT_PARAMS = config.get("params", "X_mass/X_pt, X_eta")
-PLOT_DIR = config.get("plot-dir", "/eos/user/m/mroine/www/")
+PLOT_DIR = config.get("plot-dir", "/eos/user/m/mroine/www/VBFHHto2B2Tau_Par-CV-1-C2V-0-C3-1_TuneCP5_13p6TeV_madgraph-pythia8/")
 NORMALIZE = config.get("normalize", "true");
 
 _hadhad_string = "_hadhad" if HADHAD == "true" else ""
+
+JET_PATH = "jets/VBFHHto2B2Tau_Par-CV-1-C2V-0-C3-1_TuneCP5_13p6TeV_madgraph-pythia8"
+
 JET_FILES = {
-    "AK4": f"jets/Jet{_hadhad_string}.root",
-    "AK8": f"jets/fatJet{_hadhad_string}.root",
-    "AK15": f"jets/AK15{_hadhad_string}.root"
+    "AK4": f"{JET_PATH}/Jet{_hadhad_string}.root",
+    "AK8": f"{JET_PATH}/fatJet{_hadhad_string}.root",
+    "AK15": f"{JET_PATH}/AK15{_hadhad_string}.root"
 }
+
 
 REQUESTED_JETS = [j for j in JET_FILES.keys() if j not in EXCLUDED_JETS]
 
@@ -35,6 +39,10 @@ _clean = (
 
 PLOT_PATH = f"{PLOT_DIR}{_ak4_str}{_ak8_str}{_ak15_str}{_clean}{_hadhad_string}_plot.png"
 
+rule all:
+    input:
+        PLOT_PATH
+
 rule compile:
     input:
         "skimmer/BuildData.C"
@@ -43,27 +51,24 @@ rule compile:
     shell:
         "root -l -b -q -e 'int status = gSystem->CompileMacro(\"skimmer/BuildData.C\", \"kf\"); gSystem->Exit(status == 1 ? 0 : 1);'"
 
-rule all:
-    input:
-        PLOT_PATH
-
 rule skim:
     input:
         [JET_FILES[j] for j in REQUESTED_JETS if j in JET_FILES],
-        f"jets/RawEventInfo{_hadhad_string}.root"
+        f"{JET_PATH}/RawEventInfo{_hadhad_string}.root"
 
 rule skim_raw_data:
     input:
         INPUT_FILES,
         "skimmer/BuildData_C.so"
     output:
-        f"jets/RawEventInfo{_hadhad_string}.root"
+        f"{JET_PATH}/RawEventInfo{_hadhad_string}.root"
     params:
         pattern = f"{DATA_DIR}/*.root",
-        hadhad = HADHAD
+        hadhad = HADHAD,
+        out_path = JET_PATH
     shell:
         """
-        root -l -b -q 'skimmer/BuildData.C+("{params.pattern}", false, false, false, true, {params.hadhad})'
+        root -l -b -q 'skimmer/BuildData.C+("{params.pattern}", false, false, false, true, {params.hadhad}, "{params.out_path}")'
         """
 
 rule skim_ak4:
@@ -71,13 +76,14 @@ rule skim_ak4:
         INPUT_FILES,
         "skimmer/BuildData_C.so"
     output:
-        f"jets/Jet{_hadhad_string}.root"
+        f"{JET_PATH}/Jet{_hadhad_string}.root"
     params:
         pattern = f"{DATA_DIR}/*.root",
-        hadhad = HADHAD
+        hadhad = HADHAD,
+        out_path = JET_PATH
     shell:
         """
-        root -l -b -q 'skimmer/BuildData.C+("{params.pattern}", true, false, false, false, {params.hadhad})'
+        root -l -b -q 'skimmer/BuildData.C+("{params.pattern}", true, false, false, false, {params.hadhad}, "{params.out_path}")'
         """
 
 rule skim_ak8:
@@ -85,13 +91,14 @@ rule skim_ak8:
         INPUT_FILES,
         "skimmer/BuildData_C.so"
     output:
-        f"jets/fatJet{_hadhad_string}.root"
+        f"{JET_PATH}/fatJet{_hadhad_string}.root"
     params:
         pattern = f"{DATA_DIR}/*.root",
-        hadhad = HADHAD
+        hadhad = HADHAD,
+        out_path = JET_PATH
     shell:
         """
-        root -l -b -q 'skimmer/BuildData.C+("{params.pattern}", false, true, false, false, {params.hadhad})'
+        root -l -b -q 'skimmer/BuildData.C+("{params.pattern}", false, true, false, false, {params.hadhad}, "{params.out_path}")'
         """
 
 rule skim_ak15:
@@ -99,13 +106,14 @@ rule skim_ak15:
         INPUT_FILES,
         "skimmer/BuildData_C.so"
     output:
-        f"jets/AK15{_hadhad_string}.root"
+        f"{JET_PATH}/AK15{_hadhad_string}.root"
     params:
         pattern = f"{DATA_DIR}/*.root",
-        hadhad = HADHAD
+        hadhad = HADHAD,
+        out_path = JET_PATH
     shell:
         """
-        root -l -b -q 'skimmer/BuildData.C+("{params.pattern}", false, false, true, false, {params.hadhad})'
+        root -l -b -q 'skimmer/BuildData.C+("{params.pattern}", false, false, true, false, {params.hadhad}, "{params.out_path}")'
         """
 
 rule plot:
@@ -119,8 +127,9 @@ rule plot:
         ak15 = "true" if "AK15" in REQUESTED_JETS else "false",
         plot_params = PLOT_PARAMS,
         normalize = NORMALIZE,
-        hadhad = HADHAD
+        hadhad = HADHAD,
+        jet_path = JET_PATH
     shell:
         """
-        root -l -b -q 'plotter/Plots.C+({params.ak4}, {params.ak8}, {params.ak15}, "{params.plot_params}", "{output}", {params.normalize}, {params.hadhad})'
+        root -l -b -q 'plotter/Plots.C+({params.ak4}, {params.ak8}, {params.ak15}, "{params.plot_params}", "{output}", {params.normalize}, {params.hadhad}, "{params.jet_path}")'
         """
