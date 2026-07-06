@@ -14,11 +14,12 @@
     #include "TTree.h"
     #include "TH2F.h"
 
-    void PlotEfficiencies(const char* save_path = "/eos/user/m/mroine/www",
-        const char* fRaw  = "/eos/user/m/mroine/NanoTuples/Htautau/workflow/jets/VBFHHto2B2Tau_Par-CV-1-C2V-0-C3-1_TuneCP5_13p6TeV_madgraph-pythia8/RawEventInfo_hadhad.root",
-        const char* fAK4  = "/eos/user/m/mroine/NanoTuples/Htautau/workflow/jets/VBFHHto2B2Tau_Par-CV-1-C2V-0-C3-1_TuneCP5_13p6TeV_madgraph-pythia8/Jet_hadhad.root",
-        const char* fAK8  = "/eos/user/m/mroine/NanoTuples/Htautau/workflow/jets/VBFHHto2B2Tau_Par-CV-1-C2V-0-C3-1_TuneCP5_13p6TeV_madgraph-pythia8/fatJet_hadhad.root",
-        const char* fAK15 = "/eos/user/m/mroine/NanoTuples/Htautau/workflow/jets/VBFHHto2B2Tau_Par-CV-1-C2V-0-C3-1_TuneCP5_13p6TeV_madgraph-pythia8/jets/AK15_hadhad.root"
+    void PlotEfficiencies(const char* save_path = "/eos/user/m/mroine/www/GluGluH-HTo2Tau_Par-M-125_TuneCP5_13p6TeV_powheg-pythia8",
+        const char* fRaw  = "/eos/user/m/mroine/NanoTuples/Htautau/workflow/jets/GluGluH-HTo2Tau_Par-M-125_TuneCP5_13p6TeV_powheg-pythia8/RawEventInfo.root",
+        const char* fAK4  = "/eos/user/m/mroine/NanoTuples/Htautau/workflow/jets/GluGluH-HTo2Tau_Par-M-125_TuneCP5_13p6TeV_powheg-pythia8/Jet.root",
+        const char* fAK8  = "/eos/user/m/mroine/NanoTuples/Htautau/workflow/jets/GluGluH-HTo2Tau_Par-M-125_TuneCP5_13p6TeV_powheg-pythia8/fatJet.root",
+        const char* fAK15 = "/eos/user/m/mroine/NanoTuples/Htautau/workflow/jets/GluGluH-HTo2Tau_Par-M-125_TuneCP5_13p6TeV_powheg-pythia8/AK15.root",
+        const char* fTau = "/eos/user/m/mroine/NanoTuples/Htautau/workflow/jets/GluGluH-HTo2Tau_Par-M-125_TuneCP5_13p6TeV_powheg-pythia8/Tau.root"
     ) {
 
         TCanvas* c1 = new TCanvas("c1", "", 1800, 1200);
@@ -38,30 +39,35 @@
             TH1F* h_num_AK4 = new TH1F(hPrefix + "_ak4",  "", nBins, vMin, vMax);
             TH1F* h_num_AK8 = new TH1F(hPrefix + "_ak8",  "", nBins, vMin, vMax);
             TH1F* h_num_AK15 = new TH1F(hPrefix + "_ak15", "", nBins, vMin, vMax);
+            TH1F* h_num_Tau = new TH1F(hPrefix + "_Tau", "", nBins, vMin, vMax);
 
             ProjectFromTree(fRaw, h_den, rawVar, rawCut);
             ProjectFromTree(fAK4, h_num_AK4, jetVar, jetCut);
             ProjectFromTree(fAK8, h_num_AK8, jetVar, jetCut);
             ProjectFromTree(fAK15, h_num_AK15, jetVar, jetCut);
+            ProjectFromTree(fTau, h_num_Tau, jetVar, jetCut);
 
             TEfficiency* effAK4  = new TEfficiency(*h_num_AK4, *h_den);
             TEfficiency* effAK8  = new TEfficiency(*h_num_AK8, *h_den);
             TEfficiency* effAK15 = new TEfficiency(*h_num_AK15, *h_den);
+            TEfficiency* effTau = new TEfficiency(*h_num_Tau, *h_den);
 
             effAK4->SetTitle(Form(";%s;Matching Efficiency", xAxisTitle));
         
             effAK4->SetMarkerStyle(20);
             effAK8->SetMarkerStyle(20);
             effAK15->SetMarkerStyle(20);
+            effTau->SetMarkerStyle(20);
 
             effAK4->SetMarkerColor(kBlue);
             effAK8->SetMarkerColor(kRed);
             effAK15->SetMarkerColor(kGreen+2);
+            effTau->SetMarkerColor(kBlack);
 
             effAK4->SetMarkerSize(0.7);
             effAK8->SetMarkerSize(0.7);
             effAK15->SetMarkerSize(0.7);
-
+            effTau->SetMarkerSize(0.7);
 
             effAK4->Draw("AP");
             gPad->Update(); 
@@ -73,12 +79,13 @@
 
             effAK8->Draw("P SAME");
             effAK15->Draw("P SAME");
+            effTau->Draw("P SAME");
             c1->cd(0);
         };
 
 
         auto drawProfilePlot = [&](int padNum,
-                                    const char* yAK4, const char* yAK8, const char* yAK15,
+                                    const char* yAK4, const char* yAK8, const char* yAK15, const char* yTau,
                                     const char* xVar, const char* cut,
                                     int nBins, float vMin, float vMax,
                                     const char* xAxisTitle, const char* yAxisTitle,
@@ -91,14 +98,13 @@
             TString hPrefix = Form("pad%d", padNum);
 
             auto makeProfile = [&](const char* fname, const char* yVar, const char* tag, int color) -> TProfile* {
-                // 2D hist: y vs x, same idea as ProjectFromTree for 1D
                 TH2F* h2 = new TH2F(hPrefix + "_h2_" + tag, "", nBins, vMin, vMax, 200, yMin, yMax);
 
-                TString expr = Form("%s:%s", yVar, xVar);   // e.g. "ak4_pt/genH_pt:genH_pt"
+                TString expr = Form("%s:%s", yVar, xVar);
                 ProjectFromTree(fname, h2, expr.Data(), cut);
 
                 TProfile* p = h2->ProfileX(hPrefix + "_prof_" + tag);
-                p->SetDirectory(0);   // only detach the final profile, not the helper itself
+                p->SetDirectory(0);
 
                 p->SetMarkerStyle(20);
                 p->SetMarkerColor(color);
@@ -113,6 +119,7 @@
             TProfile* pAK4  = makeProfile(fAK4,  yAK4,  "ak4",  kBlue);
             TProfile* pAK8  = makeProfile(fAK8,  yAK8,  "ak8",  kRed);
             TProfile* pAK15 = makeProfile(fAK15, yAK15, "ak15", kGreen + 2);
+            TProfile* pTau  = makeProfile(fTau, yTau, "tau", kBlack);
 
             pAK4->SetTitle(Form(";%s;%s", xAxisTitle, yAxisTitle));
             pAK4->GetYaxis()->SetRangeUser(yMin, yMax);
@@ -120,6 +127,7 @@
             pAK4->Draw("P");
             pAK8->Draw("P SAME");
             pAK15->Draw("P SAME");
+            pTau->Draw("P SAME");
 
             if (drawUnityLine) {
                 TLine* unity = new TLine(vMin, 1.0, vMax, 1.0);
@@ -163,6 +171,7 @@
                 {fAK4,  "ak4",  kBlue},
                 {fAK8,  "ak8",  kRed},
                 {fAK15, "ak15", kGreen + 2},
+                {fTau, "tau", kBlack}
             };
 
             TEfficiency* first = nullptr;
@@ -198,7 +207,6 @@
                 }
             }
 
-            // small legend: pileup variable only (jet colors come from main legend)
             auto* legPU = new TLegend(0.55, 0.18, 0.88, 0.34);
             legPU->SetBorderSize(0);
             legPU->SetFillStyle(0);
@@ -227,6 +235,7 @@
             "ak4_pt/genH_pt",
             "fj_pt/genH_pt",
             "ak15_pt/genH_pt",
+            "tau_pt/genH_pt",
             "genH_pt", "genH_pt > 0",
             100, 0.0, 800.0,
             "genH_pt [GeV]", "p_{T}^{reco}/p_{T}^{gen}",
@@ -237,6 +246,7 @@
             "dR_ak4_H",            
             "dR_fj_H",
             "dR_ak15_H",  
+            "dR_tau_H",
             "genH_pt", "",
             100, 0.0, 800.0,
             "genH_pt [GeV]", "#Delta R(jet, H)",
@@ -270,6 +280,6 @@
         leg->Draw();
 
 
-        c1->SaveAs(TString(save_path) + "/JetFatJetAK15_eff_vs_genH_pt_PV_npvsGood_genTau_pt_asym_hadhad.png"); 
+        c1->SaveAs(TString(save_path) + "/JetFatJetAK15_eff_vs_genH_pt_PV_npvsGood_genTau_pt_asym.png"); 
         std::cout << "Done! Saved to " << save_path << "/JetFatJetAK15_eff_SideBySide.png" << std::endl;
     }

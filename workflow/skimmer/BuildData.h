@@ -178,6 +178,61 @@ const std::vector<std::string> AK15_dict = {
     "PuppiMET_phi"
 };
 
+const std::vector<std::string> tau_dict = {
+    "target_mass",
+    "nMatchedGoodTau",
+    "matchedTausIdx",
+    "matchedGenTau1Idx",
+    "matchedGenTa.qu2Idx",
+    "matchedHiggsIdx",
+
+    "is_truth_hadhad",
+    "is_truth_ehad",
+    "is_truth_muhad",
+
+    "genH_pt",
+    "genH_eta",
+    "genH_phi",
+    "genTau1_pt",
+    "genTau1_eta",
+    "genTau1_phi",
+    "genTau2_pt",
+    "genTau2_eta",
+    "genTau2_phi",
+    "genTau_pt_asym",
+
+    "tau_pt",
+    "tau_eta",
+    "tau_phi",
+    "tau_mass",
+    "tau_charge",
+    "tau_dxy",
+    "tau_dz",
+    "tau_ipLengthSig",
+    "tau_chargedIso",
+    "tau_neutralIso",
+    "tau_rawIso",
+    "tau_rawIsodR03",
+    "tau_puCorr",
+
+    "tau_decayMode",
+    "tau_genPartFlav",
+    "tau_genPartIdx",
+    "tau_idDeepTauVSjet",
+    "tau_idDeepTauVSe",
+    "tau_idDeepTauVSmu",
+    "tau_rawDeepTauVSjet",
+
+    "dR_tau_tau1",
+    "dR_tau_tau2",
+    "dR_tau1_tau2",
+    "dR_tau_H",
+
+    "PV_npvsGood",
+    "Pileup_nTrueInt",
+    "PV_npvs"
+};
+
 const std::vector<std::string> raw_data_dict = {
     "RawPFMET_pt",
     "RawPFMET_phi",   
@@ -196,7 +251,13 @@ const std::vector<std::string> raw_data_dict = {
     "genTau_pt_asym_raw",
     "dR_fJ_nolim",
     "dR_Jet_nolim",
-    "dR_AK15_nolim"
+    "dR_AK15_nolim",
+    "is_truth_ehad",
+    "is_truth_muhad",
+    "is_truth_hadhad",
+    "DecayProds_absid",
+    "DecayProds_ptfrac",
+    "DecayProds_parentTauIdx"
 };
 
 #endif

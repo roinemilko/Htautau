@@ -13,7 +13,7 @@
 #include <TStyle.h>
 
 
-void Plots(bool AK4 = true, bool AK8 = true, bool AK15 = true, 
+void Plots(bool AK4 = true, bool AK8 = true, bool AK15 = true,  bool Tau = true,
         const char* params = "X_mass/X_pt, X_eta",
         const char* save_path = "/eos/user/m/mroine/www/",
         bool normalize = true,
@@ -31,8 +31,8 @@ void Plots(bool AK4 = true, bool AK8 = true, bool AK15 = true,
         return;
     }
 
-    TFile *AK4_f = nullptr, *AK8_f = nullptr, *AK15_f = nullptr;
-    TTree *AK4_tree = nullptr, *AK8_tree = nullptr, *AK15_tree = nullptr;
+    TFile *AK4_f = nullptr, *AK8_f = nullptr, *AK15_f = nullptr, *Tau_f = nullptr;
+    TTree *AK4_tree = nullptr, *AK8_tree = nullptr, *AK15_tree = nullptr, *Tau_tree = nullptr;
 
     if (AK4) {
         TString file_path = TString(jet_path) + "/Jet" + hadhad_str + ".root"; 
@@ -60,6 +60,16 @@ void Plots(bool AK4 = true, bool AK8 = true, bool AK15 = true,
             std::cerr << "Couldn't open file AK15.root" << std::endl;
         }
     }
+
+    if (Tau) {
+        TString file_path = TString(jet_path) + "/Tau" + hadhad_str + ".root"; 
+        Tau_f = new TFile(file_path, "READ");
+        if (Tau_f) {Tau_tree = (TTree*)Tau_f->Get("Events");}
+        else {
+            std::cerr << "Couldn't open file AK15.root" << std::endl;
+        }
+    }
+
     gStyle->SetOptStat(0);
     gStyle->SetOptTitle(0);
 
@@ -119,7 +129,7 @@ void Plots(bool AK4 = true, bool AK8 = true, bool AK15 = true,
                 h->SetLineWidth(2);
                 if (normalize) {h->Scale(1./h->Integral());}
                 hs->Add(h);
-                if (i == 0) {leg->AddEntry(h, "Anti k_{T}, R = 0.4, p_{T} > 30 GeC, |#eta| < 2.5", "l");}
+                if (i == 0) {leg->AddEntry(h, "Anti k_{T}, R = 0.4, p_{T} > 30 GeV, |#eta| < 2.5", "l");}
             }
         }
 
@@ -164,6 +174,27 @@ void Plots(bool AK4 = true, bool AK8 = true, bool AK15 = true,
                 if (i == 0) {leg->AddEntry(h, "Anti k_{T}, R = 1.5, p_{T} > 150 GeV, |#eta| < 2.5", "l");}
             }
         }
+
+        if (Tau && Tau_tree) {
+            TString expr = baseExpr;
+            expr.ReplaceAll("X", "tau"); 
+            
+            TString hName = Form("htau_%d", i);
+            if (Tau_tree->Draw(expr + ">>" + hName, "") == -1) {
+                std::cerr << "Parameter " << expr << " doesn't exist!"  << std::endl;
+                return;
+            };
+            
+            TH1F* h = (TH1F*)gDirectory->Get(hName);
+            if (h) {
+                h->SetLineColor(kGreen + 2);
+                h->SetLineWidth(2);
+                if (normalize) {h->Scale(1./h->Integral());}
+                hs->Add(h); 
+                if (i == 0) {leg->AddEntry(h, "Slimmed tau after basic selection, |#eta| < 2.5", "l");}
+            }
+        }
+    
 
 
         gPad->SetLeftMargin(0.15);

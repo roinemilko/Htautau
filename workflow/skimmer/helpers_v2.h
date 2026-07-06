@@ -6,6 +6,9 @@
 #include <ROOT/RVec.hxx>
 #include <cmath>
 #include <vector>
+#include "Math/Vector4D.h"
+#include "ROOT/RVec.hxx"
+#include <cmath>
 
 using namespace ROOT::VecOps;
 
@@ -221,6 +224,57 @@ struct TauCandidateInfo {
     int higgsIdx;
     int pdgId;
 };
+
+// Stores the final decay products and their fractions from the original tau momenta
+struct TauProducts {
+    ROOT::RVec<int> product_id;
+    ROOT::RVec<float> ptfrac;
+    ROOT::RVec<int> ParentTauIdx;
+};
+
+inline static bool isDecendant(int particle, int parent, const ROOT::RVec<int>&motherIdx) {
+    int mom = motherIdx[particle];
+    while (mom >= 0) {
+        if (mom == parent) {return true;}
+        mom = motherIdx[mom];
+    }
+    return false;
+
+}
+
+// Get the final decay products of the HardTruth taus and their fractions of the tau pt
+inline TauProducts GetDecayProducts(
+    const ROOT::RVec<float>& pt,
+    const ROOT::RVec<int>& pgId,
+    const ROOT::RVec<int>& status,
+    const ROOT::RVec<int>& motherIdx,
+    const ROOT::RVec<int>& HardTauFromH
+) {
+    TauProducts result;
+
+    // Find hard tau form Higgs and save its pt 
+    for (size_t tau = 0; tau < pt.size(); tau++) {
+        if (HardTauFromH[tau] <= 0) {continue;}
+
+        const double tauPt = pt[tau];
+        if (tauPt <= 0) {continue;}
+
+        // Find what it decayed to and save its pt fraction and particle id and parent tau id
+        for (size_t particle = 0; particle < pt.size(); particle++) {
+            if (particle == tau) {continue;}
+            if (status[particle] != 1) {continue;}
+            if (!isDecendant((int)particle, (int)tau, motherIdx)) {continue;}
+
+            result.product_id.push_back(std::abs(pgId[particle]));
+            result.ptfrac.push_back(pt[particle] / tauPt);
+            result.ParentTauIdx.push_back((int)tau);
+
+        }
+
+    }
+    return result;
+
+}
 
 // Mask: For each preselected jet, select the ones that contain opposite charge taus from hard processes (indicating H->tautau jet). Forces
 // only one matched jet

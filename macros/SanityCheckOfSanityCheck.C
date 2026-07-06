@@ -20,7 +20,8 @@ std::map<TString, std::array<float, 6>> Ranges {
 
 float higgs_mass = 125.0f;
 
-void SanityCheckOfSanityCheck_run(const char* jet_id, const char* file_hadhad = "/eos/user/m/mroine/NanoTuples/Htautau/workflow/jets/RawEventInfo_hadhad.root") {
+
+void SanityCheckOfSanityCheck_run(const char* jet_id, const char* file_hadhad = "/eos/user/m/mroine/NanoTuples/Htautau/workflow/jets/GluGluH-HTo2Tau_Par-M-125_TuneCP5_13p6TeV_powheg-pythia8/RawEventInfo_hadhad.root") {
     TFile* f_hadhad = new TFile(file_hadhad, "READ");
     TTree* t_hadhad = (TTree*)f_hadhad->Get("Events");
 
@@ -113,26 +114,49 @@ void SanityCheckOfSanityCheck_run(const char* jet_id, const char* file_hadhad = 
     c1.Divide(3,2);
 
     c1.cd(1);
+    gPad->SetLeftMargin(0.12);
+    gPad->SetRightMargin(0.15);
+    gPad->SetBottomMargin(0.12);
+    gPad->SetTopMargin(0.10);
     h2_Scatter_bin1->Draw("colz");
+    gPad->SetLogz(true);
     h2_Scatter_bin1->SetTitle(Form("%i GeV < H_pt < %i GeV", (int)Ranges[jet_id][0], (int)Ranges[jet_id][1]));
     yeqx.Draw("same");
     yeghalfx.Draw("same");
     box_bin1->Draw("same");
 
+    TLatex latex;
+    latex.SetNDC();
     
     c1.cd(2);
+    gPad->SetLeftMargin(0.12);
+    gPad->SetRightMargin(0.15);
+    gPad->SetBottomMargin(0.12);
+    gPad->SetTopMargin(0.10);
     h2_Scatter_bin2->Draw("colz");
+    gPad->SetLogz(true);
     h2_Scatter_bin2->SetTitle(Form("%i GeV < H_pt < %i GeV", (int)Ranges[jet_id][2], (int)Ranges[jet_id][3]));
     yeqx.Draw("same");
     yeghalfx.Draw("same");
     box_bin2->Draw("same");
 
     c1.cd(3);
+    gPad->SetLeftMargin(0.12);
+    gPad->SetRightMargin(0.15);
+    gPad->SetBottomMargin(0.12);
+    gPad->SetTopMargin(0.10);
     h2_Scatter_bin3->Draw("colz");
+    gPad->SetLogz(true);
     h2_Scatter_bin3->SetTitle(Form("%i GeV < H_pt < %i GeV", (int)Ranges[jet_id][4], (int)Ranges[jet_id][5]));
     yeqx.Draw("same");
     yeghalfx.Draw("same");
     box_bin3->Draw("same");
+
+    latex.SetTextFont(62);
+    latex.SetTextSize(0.06);
+    latex.SetTextAlign(31); 
+    latex.DrawLatex(0.85, 0.92, jet_id); 
+    latex.SetTextAlign(11);
 
     c1.cd(4);
     h_dist_bin1->Draw("same");
@@ -143,34 +167,57 @@ void SanityCheckOfSanityCheck_run(const char* jet_id, const char* file_hadhad = 
     c1.cd(6);
     h_dist_bin3->Draw("same");
 
-    c1.cd(0);
-    TLatex latex;
-    latex.SetNDC();
-    latex.SetTextFont(62);
-    latex.SetTextSize(0.045);
-    latex.DrawLatex(0.05, 0.95, jet_id);
-
     TCanvas c2("c2", "All Events", 1000, 500);
     c2.Divide(2, 1);
 
     c2.cd(1);
+    gPad->SetLeftMargin(0.12);
+    gPad->SetRightMargin(0.15);
+    gPad->SetBottomMargin(0.12);
+    gPad->SetTopMargin(0.20);
+
     if (h2_Scatter_all) {
         h2_Scatter_all->Draw("colz");
+        gPad->SetLogz(true);
         yeqx.Draw("same");
-        yeghalfx.Draw("same");
+        yeghalfx.Draw("same"); 
     }
+
+    
 
     c2.cd(2);
+    gPad->SetLeftMargin(0.12);
+    gPad->SetRightMargin(0.05);
+    gPad->SetBottomMargin(0.12);
+    gPad->SetTopMargin(0.20);
     if (h_dist_all) {
         h_dist_all->Draw("hist");
+        latex.SetTextFont(62);
+        latex.SetTextSize(0.06);
+        latex.SetTextAlign(31); 
+        latex.SetTextFont(42);
+        latex.DrawLatex(0.95, 0.92, jet_id); 
     }
 
-    c2.cd(0);
-    latex.DrawLatex(0.05, 0.95, jet_id);
+    c2.cd(0); 
 
+    latex.SetNDC();
 
-    TString filename_c1 = "/eos/user/m/mroine/www/" + plot_param + "_Clustering_Scatter_All.png";
-    TString filename_c2 = "/eos/user/m/mroine/www/" + plot_param + "_Clustering_Scatter.png";
+    latex.SetTextAlign(11);
+    latex.SetTextFont(62);
+    latex.SetTextSize(0.05);
+    latex.DrawLatex(0.075, 0.93, "CMS");
+
+    latex.SetTextFont(52);
+    latex.SetTextSize(0.035);
+    latex.DrawLatex(0.075, 0.88, "Simulation, Work in Progress");
+
+    latex.SetTextFont(42);
+    latex.SetTextSize(0.04);
+    latex.DrawLatex(0.075, 0.83, "H #rightarrow #tau#tau (125 GeV)");
+
+    TString filename_c1 = "/eos/user/m/mroine/www/GluGluH-HTo2Tau_Par-M-125_TuneCP5_13p6TeV_powheg-pythia8/" + plot_param + "_Clustering_Scatter_All.png";
+    TString filename_c2 = "/eos/user/m/mroine/www/GluGluH-HTo2Tau_Par-M-125_TuneCP5_13p6TeV_powheg-pythia8/" + plot_param + "_Clustering_Scatter.png";
     c2.SaveAs(filename_c1);
     c1.SaveAs(filename_c2);
 }

@@ -23,12 +23,12 @@ inline float dR(float eta1, float phi1, float eta2, float phi2) {
 
 void BuildData(
     const char* file_pattern = "nano_*.root",
-    bool include_AK4 = true, bool include_AK8 = true, bool include_AK15 = true, bool include_RawData = false,
+    bool include_AK4 = true, bool include_AK8 = true, bool include_AK15 = true, bool include_RawData = false, bool include_Tau = true,
     bool require_hadhad = false,
     const char* save_directory = "jets/"
 ) {
 
-    if (!include_AK4 && !include_AK8 && !include_AK15 && !include_RawData) {
+    if (!include_AK4 && !include_AK8 && !include_AK15 && !include_RawData && !include_Tau) {
         std::cerr << "You have to include somehting" <<std::endl;
         return;
     }
@@ -69,6 +69,7 @@ void BuildData(
 
 
     ROOT::RDF::RNode df_raw_event_data = df_truth;
+    ROOT::RDF::RNode df_Tau = df_truth;
     ROOT::RDF::RNode df_AK4 = df_truth;
     ROOT::RDF::RNode df_AK8 = df_truth;
     ROOT::RDF::RNode df_AK15 = df_truth;
@@ -84,6 +85,10 @@ void BuildData(
         
         .Define("truthTauIdxs", "ROOT::VecOps::Nonzero(tauFromH)")
         .Filter("truthTauIdxs.size() >= 2", "Require 2 taus")
+        .Define("TauDecayProducts", "GetDecayProducts(GenPart_pt, GenPart_pdgId, GenPart_status, GenPart_genPartIdxMother, tauFromH)")
+        .Define("DecayProds_absid", "TauDecayProducts.product_id")
+        .Define("DecayProds_ptfrac", "TauDecayProducts.ptfrac")
+        .Define("DecayProds_parentTauIdx", "TauDecayProducts.ParentTauIdx")
         
 
         .Define("genTau1_pt_raw", "GenPart_pt[truthTauIdxs[0]]")
@@ -97,10 +102,68 @@ void BuildData(
         .Define("dR_AK15_nolim", "MatchJetSanityCheck(AK15Puppi_eta, AK15Puppi_phi, GenPart_eta, GenPart_phi, GenPart_pdgId, GenPart_genPartIdxMother, GenPart_statusFlags)");
     }
 
+    if (include_Tau) {
+        df_Tau = df_truth
+            .Define("goodTaus", Form("MakeGoodJetMask(Tau_pt, Tau_eta, %f, %f)", 0.f, AK4_eta_max))
+            .Define("TauMatch", "MatchTwoJetsToHTauTau(Tau_eta, Tau_phi, goodTaus, GenPart_eta, GenPart_phi, GenPart_pdgId, GenPart_genPartIdxMother, GenPart_statusFlags, 0.4f)")
+            .Filter("TauMatch[0] >= 0", "Valid Tau match")
+            .Define("matchedTausIdx", "ROOT::VecOps::RVec<int>{TauMatch[0], TauMatch[1]}")
+            .Define("matchedTau1Idx", "TauMatch[2]")
+            .Define("matchedTau2Idx", "TauMatch[3]")
+            .Define("matchedHiggsIdx", "TauMatch[4]")
+            .Define("target_mass", "GenPart_mass[matchedHiggsIdx]")
+            .Define("nMatchedGoodTau", "2")
+
+            .Define("tau_pt",   "ROOT::VecOps::RVec<float>{Tau_pt[TauMatch[0]],   Tau_pt[TauMatch[1]]}")
+            .Define("tau_eta",  "ROOT::VecOps::RVec<float>{Tau_eta[TauMatch[0]],  Tau_eta[TauMatch[1]]}")
+            .Define("tau_phi",  "ROOT::VecOps::RVec<float>{Tau_phi[TauMatch[0]],  Tau_phi[TauMatch[1]]}")
+            .Define("tau_mass", "ROOT::VecOps::RVec<float>{Tau_mass[TauMatch[0]], Tau_mass[TauMatch[1]]}")
+            .Define("tau_charge", "ROOT::VecOps::RVec<int>{Tau_charge[TauMatch[0]], Tau_charge[TauMatch[1]]}")
+
+            .Define("tau_dxy", "ROOT::VecOps::RVec<float>{Tau_dxy[TauMatch[0]], Tau_dxy[TauMatch[1]]}")
+            .Define("tau_dz",  "ROOT::VecOps::RVec<float>{Tau_dz[TauMatch[0]],  Tau_dz[TauMatch[1]]}")
+            .Define("tau_ipLengthSig", "ROOT::VecOps::RVec<float>{Tau_ipLengthSig[TauMatch[0]], Tau_ipLengthSig[TauMatch[1]]}")
+
+            .Define("tau_chargedIso",  "ROOT::VecOps::RVec<float>{Tau_chargedIso[TauMatch[0]],  Tau_chargedIso[TauMatch[1]]}")
+            .Define("tau_neutralIso",  "ROOT::VecOps::RVec<float>{Tau_neutralIso[TauMatch[0]],  Tau_neutralIso[TauMatch[1]]}")
+            .Define("tau_rawIso",      "ROOT::VecOps::RVec<float>{Tau_rawIso[TauMatch[0]],      Tau_rawIso[TauMatch[1]]}")
+            .Define("tau_rawIsodR03",  "ROOT::VecOps::RVec<float>{Tau_rawIsodR03[TauMatch[0]],  Tau_rawIsodR03[TauMatch[1]]}")
+            .Define("tau_puCorr",      "ROOT::VecOps::RVec<float>{Tau_puCorr[TauMatch[0]],      Tau_puCorr[TauMatch[1]]}")
+
+            .Define("tau_decayMode",    "ROOT::VecOps::RVec<int>{Tau_decayMode[TauMatch[0]],    Tau_decayMode[TauMatch[1]]}")
+            .Define("tau_genPartFlav",  "ROOT::VecOps::RVec<int>{Tau_genPartFlav[TauMatch[0]],  Tau_genPartFlav[TauMatch[1]]}")
+            .Define("tau_genPartIdx",   "ROOT::VecOps::RVec<int>{Tau_genPartIdx[TauMatch[0]],   Tau_genPartIdx[TauMatch[1]]}")
+
+            .Define("tau_idDeepTauVSjet", "ROOT::VecOps::RVec<int>{Tau_idDeepTau2018v2p5VSjet[TauMatch[0]], Tau_idDeepTau2018v2p5VSjet[TauMatch[1]]}")
+            .Define("tau_idDeepTauVSe",   "ROOT::VecOps::RVec<int>{Tau_idDeepTau2018v2p5VSe[TauMatch[0]],   Tau_idDeepTau2018v2p5VSe[TauMatch[1]]}")
+            .Define("tau_idDeepTauVSmu",  "ROOT::VecOps::RVec<int>{Tau_idDeepTau2018v2p5VSmu[TauMatch[0]],  Tau_idDeepTau2018v2p5VSmu[TauMatch[1]]}")
+            .Define("tau_rawDeepTauVSjet","ROOT::VecOps::RVec<float>{Tau_rawDeepTau2018v2p5VSjet[TauMatch[0]], Tau_rawDeepTau2018v2p5VSjet[TauMatch[1]]}")
+
+            .Define("genH_pt",  "GenPart_pt[matchedHiggsIdx]")
+            .Define("genH_eta", "GenPart_eta[matchedHiggsIdx]")
+            .Define("genH_phi", "GenPart_phi[matchedHiggsIdx]")
+            .Define("genTau1_pt",  "GenPart_pt[matchedTau1Idx]")
+            .Define("genTau1_eta", "GenPart_eta[matchedTau1Idx]")
+            .Define("genTau1_phi", "GenPart_phi[matchedTau1Idx]")
+            .Define("genTau2_pt",  "GenPart_pt[matchedTau2Idx]")
+            .Define("genTau2_eta", "GenPart_eta[matchedTau2Idx]")
+            .Define("genTau2_phi", "GenPart_phi[matchedTau2Idx]")
+            .Define("genTau_pt_asym", "abs(genTau1_pt - genTau2_pt) / (genTau1_pt + genTau2_pt)")
+
+            .Define("dR_tau_tau1", "dR(tau_eta[0], tau_phi[0], genTau1_eta, genTau1_phi)")
+            .Define("dR_tau_tau2", "dR(tau_eta[1], tau_phi[1], genTau2_eta, genTau2_phi)")
+            .Define("dR_tau1_tau2", "dR(genTau1_eta, genTau1_phi, genTau2_eta, genTau2_phi)")
+            .Define("dR_tau_H", "ROOT::VecOps::RVec<float>{"
+                                "dR(tau_eta[0], tau_phi[0], genH_eta, genH_phi),"
+                                "dR(tau_eta[1], tau_phi[1], genH_eta, genH_phi)"
+                                "}");
+    }
+
+
     if (include_AK4) {
         df_AK4 = df_truth
             .Define("goodJets", Form("MakeGoodJetMask(Jet_pt, Jet_eta, %f, %f)", AK4_min_pt, AK4_eta_max))
-            .Define("AK4Match", "MatchTwoJetsToHTauTau(Jet_eta, Jet_phi, goodJets, GenPart_eta, GenPart_phi, GenPart_pdgId, GenPart_genPartIdxMother, GenPart_statusFlags, 0.4f)")
+            .Define("AK4Match", "MatchTwoJetsToHTauTau(Tau_eta, Tau_phi, goodJets, GenPart_eta, GenPart_phi, GenPart_pdgId, GenPart_genPartIdxMother, GenPart_statusFlags, 0.4f)")
             .Filter("AK4Match[0] >= 0", "Valid AK4 match")
             .Define("matchedAK4JetIdx", "ROOT::VecOps::RVec<int>{AK4Match[0], AK4Match[1]}")
             .Define("matchedTau1Idx", "AK4Match[2]")
@@ -266,6 +329,15 @@ void BuildData(
         );
     }
 
+    if (include_Tau) {
+        std::cout << "Skimming Tau... " << std::endl;
+        std::string out_dir = std::string(save_directory) + "/Tau" + hadhad + ".root";
+        df_Tau.Snapshot(
+            "Events",
+            out_dir,
+            tau_dict
+        );
+    }
 
     if (include_AK4) {
         std::cout << "Skimming AK4... " <<std::endl;

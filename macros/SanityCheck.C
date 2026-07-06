@@ -9,8 +9,8 @@
 #include <THStack.h>
 #include <iostream>
 
-void SanityCheck(const char* file_hadhad = "/eos/user/m/mroine/NanoTuples/Htautau/workflow/jets/RawEventInfo_hadhad.root",
-                 const char* file_nohadhad = "/eos/user/m/mroine/NanoTuples/Htautau/workflow/jets/RawEventInfo.root") {
+void SanityCheck(const char* file_hadhad = "/eos/user/m/mroine/NanoTuples/Htautau/workflow/jets/VBFHHto2B2Tau_Par-CV-1-C2V-0-C3-1_TuneCP5_13p6TeV_madgraph-pythia8/RawEventInfo_hadhad.root",
+                 const char* file_nohadhad = "/eos/user/m/mroine/NanoTuples/Htautau/workflow/jets/VBFHHto2B2Tau_Par-CV-1-C2V-0-C3-1_TuneCP5_13p6TeV_madgraph-pythia8/RawEventInfo.root") {
 
     TFile* f_hadhad = new TFile(file_hadhad, "READ");
     TTree* t_hadhad = (TTree*)f_hadhad->Get("Events");
@@ -34,7 +34,7 @@ void SanityCheck(const char* file_hadhad = "/eos/user/m/mroine/NanoTuples/Htauta
 
         int colorIndex = 1;
 
-        for (float pt = 300.0; pt < 400.0; pt = pt + 5.0f) {
+        for (float pt = 300; pt < 400; pt = pt + 5.0f) {
             TString hname = Form("hist_%d_%d", (int)pt, padNum);
 
             TTree* t;
@@ -80,6 +80,6 @@ void SanityCheck(const char* file_hadhad = "/eos/user/m/mroine/NanoTuples/Htauta
     
     DrawPlot(1, true);
     DrawPlot(2, false);
-    c1->SaveAs("/eos/user/m/mroine/www/FatJet_dR_SanityCheck.png");
+    c1->SaveAs("/eos/user/m/mroine/www/VBFHHto2B2Tau_Par-CV-1-C2V-0-C3-1_TuneCP5_13p6TeV_madgraph-pythia8/FatJet_dR_SanityCheck_300to400.png");
 
 }
