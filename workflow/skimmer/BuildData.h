@@ -18,6 +18,17 @@
 
 constexpr Float_t kMissing = -998.f;
 
+template<typename T>
+inline ROOT::VecOps::RVec<T> FillMatchedSubjet(
+    const ROOT::VecOps::RVec<T>&    subjet,
+    int idx1, int idx2
+) {
+    return {
+        idx1 >= 0 ? subjet[idx1] : kMissing,
+        idx2 >= 0 ? subjet[idx2] : kMissing
+    };
+}
+
 const std::vector<std::string> AK4_dict = {
     "target_mass",
     "matchedHiggsIdx",
@@ -120,8 +131,23 @@ const std::vector<std::string> AK8_dict = {
     "PuppiMET_sumEt",
     "PuppiMET_sumPtUnclustered",
     "PuppiMET_pt",
-    "PuppiMET_phi"
+    "PuppiMET_phi",
+
+    "fj_nSubjetsPerEventTotal",
+    "fj_nSubjets",
+    "fj_nMatchedSubjets",
+    "fj_Subjet_mass",
+    "fj_Subjet_eta",
+    "fj_Subjet_phi",
+    "fj_Subjet_pt",
+    "fj_Subjet_rawFactor",
+    "fj_Subjet_pt_rawFactorCorrected",
+    "fj_Subjet_area",
+    "fj_Subjet_radius",
+    "dR_fj_Subjet_tau1",
+    "dR_fj_Subjet_tau2"
 };
+
 
 
 const std::vector<std::string> AK15_dict = {
@@ -175,7 +201,21 @@ const std::vector<std::string> AK15_dict = {
     "PuppiMET_sumEt",
     "PuppiMET_sumPtUnclustered",
     "PuppiMET_pt",
-    "PuppiMET_phi"
+    "PuppiMET_phi",
+
+    "ak15_nSubjetsPerEventTotal",
+    "ak15_nSubjets",
+    "ak15_nMatchedSubjets",
+    "ak15_Subjet_mass",
+    "ak15_Subjet_eta",
+    "ak15_Subjet_phi",
+    "ak15_Subjet_pt",
+    "ak15_Subjet_rawFactor",
+    "ak15_Subjet_pt_rawFactorCorrected",
+    "ak15_Subjet_area",
+    "ak15_Subjet_radius",
+    "dR_ak15_Subjet_tau1",
+    "dR_ak15_Subjet_tau2"
 };
 
 const std::vector<std::string> tau_dict = {
@@ -183,7 +223,7 @@ const std::vector<std::string> tau_dict = {
     "nMatchedGoodTau",
     "matchedTausIdx",
     "matchedGenTau1Idx",
-    "matchedGenTa.qu2Idx",
+    "matchedGenTau2Idx",
     "matchedHiggsIdx",
 
     "is_truth_hadhad",

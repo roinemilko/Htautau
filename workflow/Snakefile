@@ -3,16 +3,16 @@ import glob
 _excluded_str = config.get("exclude", "")
 EXCLUDED_JETS = [x.strip() for x in _excluded_str.split(",")] if _excluded_str else []
 
-DATA_DIR = config.get("data-dir", "/eos/cms/store/group/phys_higgs/ttHcc/NanoAOD/NanoTuples/2024/mc/GluGluH-HTo2Tau_Par-M-125_TuneCP5_13p6TeV_powheg-pythia8/NanoTuples-uParTv3-parTlepID-NanoAODv15_RunIII2024Summer24MiniAODv6-150X_v2-v2/260608_185433/0000")
+DATA_DIR = config.get("data-dir", "/eos/cms/store/group/phys_higgs/ttHcc/NanoAOD/NanoTuples/2024/mc/VBFHHto2B2Tau_Par-CV-1-C2V-0-C3-1_TuneCP5_13p6TeV_madgraph-pythia8/NanoTuples-uParTv3-parTlepID-NanoAODv15_RunIII2024Summer24MiniAODv6-150X_v2-v2/260608_185815/0000")
 INPUT_FILES = glob.glob(f"{DATA_DIR}/*.root")
 HADHAD = config.get("require-hadhad", "true")
 PLOT_PARAMS = config.get("params", "X_mass/X_pt, X_eta")
-PLOT_DIR = config.get("plot-dir", "/eos/user/m/mroine/www/GluGluH-HTo2Tau_Par-M-125_TuneCP5_13p6TeV_powheg-pythia8/")
+PLOT_DIR = config.get("plot-dir", "/eos/user/m/mroine/www/VBFHHto2B2Tau_Par-CV-1-C2V-0-C3-1_TuneCP5_13p6TeV_madgraph-pythia8/")
 NORMALIZE = config.get("normalize", "true");
 
 _hadhad_string = "_hadhad" if HADHAD == "true" else ""
 
-JET_PATH = "jets/GluGluH-HTo2Tau_Par-M-125_TuneCP5_13p6TeV_powheg-pythia8"
+JET_PATH = "jets/VBFHHto2B2Tau_Par-CV-1-C2V-0-C3-1_TuneCP5_13p6TeV_madgraph-pythia8"
 
 JET_FILES = {
     "AK4": f"{JET_PATH}/Jet{_hadhad_string}.root",

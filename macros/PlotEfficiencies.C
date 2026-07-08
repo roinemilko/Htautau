@@ -1,7 +1,7 @@
     #include <iostream>
     #include "TCanvas.h"
     #include "TLegend.h"
-    #include "TStyle.h"
+    #include "TStyle.h" 
     #include "TAxis.h"
     #include "TGraphAsymmErrors.h"
     #include "TString.h"
@@ -14,12 +14,12 @@
     #include "TTree.h"
     #include "TH2F.h"
 
-    void PlotEfficiencies(const char* save_path = "/eos/user/m/mroine/www/GluGluH-HTo2Tau_Par-M-125_TuneCP5_13p6TeV_powheg-pythia8",
-        const char* fRaw  = "/eos/user/m/mroine/NanoTuples/Htautau/workflow/jets/GluGluH-HTo2Tau_Par-M-125_TuneCP5_13p6TeV_powheg-pythia8/RawEventInfo.root",
-        const char* fAK4  = "/eos/user/m/mroine/NanoTuples/Htautau/workflow/jets/GluGluH-HTo2Tau_Par-M-125_TuneCP5_13p6TeV_powheg-pythia8/Jet.root",
-        const char* fAK8  = "/eos/user/m/mroine/NanoTuples/Htautau/workflow/jets/GluGluH-HTo2Tau_Par-M-125_TuneCP5_13p6TeV_powheg-pythia8/fatJet.root",
-        const char* fAK15 = "/eos/user/m/mroine/NanoTuples/Htautau/workflow/jets/GluGluH-HTo2Tau_Par-M-125_TuneCP5_13p6TeV_powheg-pythia8/AK15.root",
-        const char* fTau = "/eos/user/m/mroine/NanoTuples/Htautau/workflow/jets/GluGluH-HTo2Tau_Par-M-125_TuneCP5_13p6TeV_powheg-pythia8/Tau.root"
+    void PlotEfficiencies(const char* save_path = "/eos/user/m/mroine/www/VBFHHto2B2Tau_Par-CV-1-C2V-0-C3-1_TuneCP5_13p6TeV_madgraph-pythia8",
+        const char* fRaw  = "/eos/user/m/mroine/NanoTuples/Htautau/workflow/jets/VBFHHto2B2Tau_Par-CV-1-C2V-0-C3-1_TuneCP5_13p6TeV_madgraph-pythia8/RawEventInfo_hadhad.root",
+        const char* fAK4  = "/eos/user/m/mroine/NanoTuples/Htautau/workflow/jets/VBFHHto2B2Tau_Par-CV-1-C2V-0-C3-1_TuneCP5_13p6TeV_madgraph-pythia8/Jet_hadhad.root",
+        const char* fAK8  = "/eos/user/m/mroine/NanoTuples/Htautau/workflow/jets/VBFHHto2B2Tau_Par-CV-1-C2V-0-C3-1_TuneCP5_13p6TeV_madgraph-pythia8/fatJet_hadhad.root",
+        const char* fAK15 = "/eos/user/m/mroine/NanoTuples/Htautau/workflow/jets/VBFHHto2B2Tau_Par-CV-1-C2V-0-C3-1_TuneCP5_13p6TeV_madgraph-pythia8/AK15_hadhad.root",
+        const char* fTau = "/eos/user/m/mroine/NanoTuples/Htautau/workflow/jets/VBFHHto2B2Tau_Par-CV-1-C2V-0-C3-1_TuneCP5_13p6TeV_madgraph-pythia8/Tau_hadhad.root"
     ) {
 
         TCanvas* c1 = new TCanvas("c1", "", 1800, 1200);
@@ -258,6 +258,8 @@
         TGraph* pAK4_leg  = new TGraph(); pAK4_leg->SetMarkerStyle(20); pAK4_leg->SetMarkerColor(kBlue);     pAK4_leg->SetLineColor(kBlue);
         TGraph* pAK8_leg  = new TGraph(); pAK8_leg->SetMarkerStyle(20); pAK8_leg->SetMarkerColor(kRed);      pAK8_leg->SetLineColor(kRed);
         TGraph* pAK15_leg = new TGraph(); pAK15_leg->SetMarkerStyle(20); pAK15_leg->SetMarkerColor(kGreen+2); pAK15_leg->SetLineColor(kGreen+2);
+        TGraph* pTau_leg = new TGraph(); pTau_leg->SetMarkerStyle(20); pTau_leg->SetMarkerColor(kBlack); pTau_leg->SetLineColor(kBlack);
+
         TLatex latex;
         latex.SetNDC();
         latex.SetTextFont(62);
@@ -277,9 +279,10 @@
         leg->AddEntry(pAK4_leg,  "Anti k_{T}, R = 0.4, p_{T} > 30 GeV, |#eta| < 2.5", "lp");
         leg->AddEntry(pAK8_leg,  "Anti k_{T}, R = 0.8, p_{T} > 200 GeV, |#eta| < 2.5", "lp");
         leg->AddEntry(pAK15_leg, "Anti k_{T}, R = 1.5, p_{T} > 150 GeV, |#eta| < 2.5", "lp");
+        leg->AddEntry(pTau_leg, "Skimmed taus after basic selection, |#eta| < 2.5", "lp");
         leg->Draw();
 
 
-        c1->SaveAs(TString(save_path) + "/JetFatJetAK15_eff_vs_genH_pt_PV_npvsGood_genTau_pt_asym.png"); 
-        std::cout << "Done! Saved to " << save_path << "/JetFatJetAK15_eff_SideBySide.png" << std::endl;
+        c1->SaveAs(TString(save_path) + "/JetFatJetAK15_eff_vs_genH_pt_PV_npvsGood_genTau_pt_asym_hadhad.png"); 
+        std::cout << "Done! Saved to " << save_path << "/JetFatJetAK15_eff_vs_genH_pt_PV_npvsGood_genTau_pt_asym_hadhad.png" << std::endl;
     }

@@ -10,8 +10,6 @@
 #include "ROOT/RVec.hxx"
 #include <cmath>
 
-using namespace ROOT::VecOps;
-
 // NanoAOD GenPart_statusFlags bit positions used here. 
 // Refernece: https://pdg.lbl.gov/2025/reviews/rpp2025-rev-monte-carlo-numbering.pdf
 
@@ -55,6 +53,23 @@ inline ROOT::VecOps::RVec<int> MakeGoodJetMask(
         out[i] = (jet_pt[i] > pt_min && std::abs(jet_eta[i]) < abs_eta_max) ? 1 : 0;
     }
     return out;
+}
+
+// Per-subjet mask: selects subjets of the event that are children of matched jet. I.e. dR(jet, subjet) < jet radius
+inline ROOT::VecOps::RVec<int> MakeGoodSubjetMask(
+    const ROOT::VecOps::RVec<float>& subjet_eta,
+    const ROOT::VecOps::RVec<float>& subjet_phi,
+    const float jet_eta,
+    const float jet_phi,
+    const float jet_radius,
+    const float pt_min
+) {
+    ROOT::VecOps::RVec<int> out(subjet_eta.size(), 0);
+    for (size_t i = 0; i < subjet_eta.size(); i++) {
+        out[i] = (DeltaR(subjet_eta[i], subjet_phi[i], jet_eta, jet_phi) < jet_radius) ? 1 : 0;
+    }
+    return out;
+
 }
 
 // GROUND-TRUTH INFORMATION
@@ -375,7 +390,6 @@ inline ROOT::VecOps::RVec<int> MatchTwoJetsToHTauTau(
     // find AK4 jets for each tau
     const int jet1 = jetForTau(tau1);
     const int jet2 = jetForTau(tau2);
-    if (jet1 < 0 || jet2 < 0 || jet1 == jet2) return fail;
     return {jet1, jet2, tau1, tau2, higgsIdx};
 }
 

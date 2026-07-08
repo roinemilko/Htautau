@@ -108,8 +108,8 @@ void BuildData(
             .Define("TauMatch", "MatchTwoJetsToHTauTau(Tau_eta, Tau_phi, goodTaus, GenPart_eta, GenPart_phi, GenPart_pdgId, GenPart_genPartIdxMother, GenPart_statusFlags, 0.4f)")
             .Filter("TauMatch[0] >= 0", "Valid Tau match")
             .Define("matchedTausIdx", "ROOT::VecOps::RVec<int>{TauMatch[0], TauMatch[1]}")
-            .Define("matchedTau1Idx", "TauMatch[2]")
-            .Define("matchedTau2Idx", "TauMatch[3]")
+            .Define("matchedGenTau1Idx", "TauMatch[2]")
+            .Define("matchedGenTau2Idx", "TauMatch[3]")
             .Define("matchedHiggsIdx", "TauMatch[4]")
             .Define("target_mass", "GenPart_mass[matchedHiggsIdx]")
             .Define("nMatchedGoodTau", "2")
@@ -142,12 +142,12 @@ void BuildData(
             .Define("genH_pt",  "GenPart_pt[matchedHiggsIdx]")
             .Define("genH_eta", "GenPart_eta[matchedHiggsIdx]")
             .Define("genH_phi", "GenPart_phi[matchedHiggsIdx]")
-            .Define("genTau1_pt",  "GenPart_pt[matchedTau1Idx]")
-            .Define("genTau1_eta", "GenPart_eta[matchedTau1Idx]")
-            .Define("genTau1_phi", "GenPart_phi[matchedTau1Idx]")
-            .Define("genTau2_pt",  "GenPart_pt[matchedTau2Idx]")
-            .Define("genTau2_eta", "GenPart_eta[matchedTau2Idx]")
-            .Define("genTau2_phi", "GenPart_phi[matchedTau2Idx]")
+            .Define("genTau1_pt",  "GenPart_pt[matchedGenTau1Idx]")
+            .Define("genTau1_eta", "GenPart_eta[matchedGenTau1Idx]")
+            .Define("genTau1_phi", "GenPart_phi[matchedGenTau1Idx]")
+            .Define("genTau2_pt",  "GenPart_pt[matchedGenTau2Idx]")
+            .Define("genTau2_eta", "GenPart_eta[matchedGenTau2Idx]")
+            .Define("genTau2_phi", "GenPart_phi[matchedGenTau2Idx]")
             .Define("genTau_pt_asym", "abs(genTau1_pt - genTau2_pt) / (genTau1_pt + genTau2_pt)")
 
             .Define("dR_tau_tau1", "dR(tau_eta[0], tau_phi[0], genTau1_eta, genTau1_phi)")
@@ -164,7 +164,7 @@ void BuildData(
         df_AK4 = df_truth
             .Define("goodJets", Form("MakeGoodJetMask(Jet_pt, Jet_eta, %f, %f)", AK4_min_pt, AK4_eta_max))
             .Define("AK4Match", "MatchTwoJetsToHTauTau(Tau_eta, Tau_phi, goodJets, GenPart_eta, GenPart_phi, GenPart_pdgId, GenPart_genPartIdxMother, GenPart_statusFlags, 0.4f)")
-            .Filter("AK4Match[0] >= 0", "Valid AK4 match")
+            .Filter("AK4Match[0] >= 0 && AK4Match[1] >= 0", "Valid AK4 match")
             .Define("matchedAK4JetIdx", "ROOT::VecOps::RVec<int>{AK4Match[0], AK4Match[1]}")
             .Define("matchedTau1Idx", "AK4Match[2]")
             .Define("matchedTau2Idx", "AK4Match[3]")
@@ -270,7 +270,49 @@ void BuildData(
             .Define("dR_fj_tau1", "dR(fj_eta, fj_phi, genTau1_eta, genTau1_phi)")
             .Define("dR_fj_tau2", "dR(fj_eta, fj_phi, genTau2_eta, genTau2_phi)")
             .Define("dR_fj_H", "dR(fj_eta, fj_phi, genH_eta, genH_phi)")
-            .Define("dR_tau1_tau2", "dR(genTau1_eta, genTau1_phi, genTau2_eta, genTau2_phi)");
+            .Define("dR_tau1_tau2", "dR(genTau1_eta, genTau1_phi, genTau2_eta, genTau2_phi)")
+
+
+            .Define("fj_nSubjetsPerEventTotal", "nSubJet")
+            .Define("fj_goodSubjets", "MakeGoodSubjetMask(SubJet_eta, SubJet_phi, fj_eta, fj_phi, 0.8f, 0.f)")
+            .Define("fj_nSubjets", "ROOT::VecOps::Sum(fj_goodSubjets)")
+            .Define("fj_matchedSubjets", "MatchTwoJetsToHTauTau(SubJet_eta, SubJet_phi, fj_goodSubjets, GenPart_eta, GenPart_phi, GenPart_pdgId, GenPart_genPartIdxMother, GenPart_statusFlags, 0.4f)")
+
+            .Define("fj_matchedSubjet1_idx", "fj_matchedSubjets[0]")
+            .Define("fj_matchedSubjet2_idx", "fj_matchedSubjets[1]")
+            .Define("fj_matchedSubjet1_tauIdx", "fj_matchedSubjets[2]")
+            .Define("fj_matchedSubjet2_tauIdx", "fj_matchedSubjets[3]")
+            .Define("fj_nMatchedSubjets", "(int)(fj_matchedSubjet1_idx >= 0) + (int)(fj_matchedSubjet2_idx >= 0)")
+            
+
+            .Define("fj_Subjet_mass", "FillMatchedSubjet(SubJet_mass, fj_matchedSubjet1_idx, fj_matchedSubjet2_idx)")
+
+            .Define("fj_Subjet_eta", "FillMatchedSubjet(SubJet_eta, fj_matchedSubjet1_idx, fj_matchedSubjet2_idx)")
+
+            .Define("fj_Subjet_phi", "FillMatchedSubjet(SubJet_phi, fj_matchedSubjet1_idx, fj_matchedSubjet2_idx)")
+
+            .Define("fj_Subjet_pt", "FillMatchedSubjet(SubJet_pt, fj_matchedSubjet1_idx, fj_matchedSubjet2_idx)")
+
+            .Define("fj_Subjet_rawFactor", "FillMatchedSubjet(SubJet_rawFactor, fj_matchedSubjet1_idx, fj_matchedSubjet2_idx)")
+
+            .Define("fj_Subjet_pt_rawFactorCorrected", "FillMatchedSubjet((1.f - SubJet_rawFactor) * SubJet_pt, fj_matchedSubjet1_idx, fj_matchedSubjet2_idx)")
+            
+            .Define("fj_Subjet_area", "FillMatchedSubjet(SubJet_area, fj_matchedSubjet1_idx, fj_matchedSubjet2_idx)")
+
+            .Define("fj_Subjet_radius", "FillMatchedSubjet(sqrt(SubJet_area / 3.14159265), fj_matchedSubjet1_idx, fj_matchedSubjet2_idx)")
+
+            .Define("dR_fj_Subjet_tau1",
+                "fj_matchedSubjet1_idx >= 0 ? "
+                "dR(fj_Subjet_eta[0], fj_Subjet_phi[0], "
+                "GenPart_eta[fj_matchedSubjet1_tauIdx], GenPart_phi[fj_matchedSubjet1_tauIdx]) : "
+                "kMissing")
+
+            .Define("dR_fj_Subjet_tau2",
+                "fj_matchedSubjet2_idx >= 0 ? "
+                "dR(fj_Subjet_eta[1], fj_Subjet_phi[1], "
+                "GenPart_eta[fj_matchedSubjet2_tauIdx], GenPart_phi[fj_matchedSubjet2_tauIdx]) : "
+                "kMissing");
+            
     }
 
     if (include_AK15) {
@@ -314,8 +356,47 @@ void BuildData(
             .Define("dR_ak15_tau1", "dR(ak15_eta, ak15_phi, genTau1_eta, genTau1_phi)")
             .Define("dR_ak15_tau2", "dR(ak15_eta, ak15_phi, genTau2_eta, genTau2_phi)")
             .Define("dR_ak15_H", "dR(ak15_eta, ak15_phi, genH_eta, genH_phi)")
-            .Define("dR_tau1_tau2", "dR(genTau1_eta, genTau1_phi, genTau2_eta, genTau2_phi)");
-    } 
+            .Define("dR_tau1_tau2", "dR(genTau1_eta, genTau1_phi, genTau2_eta, genTau2_phi)")
+
+            .Define("ak15_nSubjetsPerEventTotal", "nAK15PuppiSubJet")
+            .Define("ak15_goodSubjets", "MakeGoodSubjetMask(AK15PuppiSubJet_eta, AK15PuppiSubJet_phi, ak15_eta, ak15_phi, 1.5f, 0.f)")
+            .Define("ak15_nSubjets", "ROOT::VecOps::Sum(ak15_goodSubjets)")
+            .Define("ak15_matchedSubjets", "MatchTwoJetsToHTauTau(AK15PuppiSubJet_eta, AK15PuppiSubJet_phi, ak15_goodSubjets, GenPart_eta, GenPart_phi, GenPart_pdgId, GenPart_genPartIdxMother, GenPart_statusFlags, 0.4f)")
+
+            .Define("ak15_matchedSubjet1_idx", "ak15_matchedSubjets[0]")
+            .Define("ak15_matchedSubjet2_idx", "ak15_matchedSubjets[1]")
+            .Define("ak15_matchedSubjet1_tauIdx", "ak15_matchedSubjets[2]")
+            .Define("ak15_matchedSubjet2_tauIdx", "ak15_matchedSubjets[3]")
+            .Define("ak15_nMatchedSubjets", "(int)(ak15_matchedSubjet1_idx >= 0) + (int)(ak15_matchedSubjet2_idx >= 0)")
+
+            .Define("ak15_Subjet_mass", "FillMatchedSubjet(AK15PuppiSubJet_mass, ak15_matchedSubjet1_idx, ak15_matchedSubjet2_idx)")
+
+            .Define("ak15_Subjet_eta", "FillMatchedSubjet(AK15PuppiSubJet_eta, ak15_matchedSubjet1_idx, ak15_matchedSubjet2_idx)")
+
+            .Define("ak15_Subjet_phi", "FillMatchedSubjet(AK15PuppiSubJet_phi, ak15_matchedSubjet1_idx, ak15_matchedSubjet2_idx)")
+
+            .Define("ak15_Subjet_pt", "FillMatchedSubjet(AK15PuppiSubJet_pt, ak15_matchedSubjet1_idx, ak15_matchedSubjet2_idx)")
+
+            .Define("ak15_Subjet_rawFactor", "FillMatchedSubjet(AK15PuppiSubJet_rawFactor, ak15_matchedSubjet1_idx, ak15_matchedSubjet2_idx)")
+
+            .Define("ak15_Subjet_pt_rawFactorCorrected", "FillMatchedSubjet((1 - AK15PuppiSubJet_rawFactor) * AK15PuppiSubJet_pt, ak15_matchedSubjet1_idx, ak15_matchedSubjet2_idx)")
+
+            .Define("ak15_Subjet_area", "FillMatchedSubjet(AK15PuppiSubJet_area, ak15_matchedSubjet1_idx, ak15_matchedSubjet2_idx)")
+
+            .Define("ak15_Subjet_radius", "FillMatchedSubjet(sqrt(AK15PuppiSubJet_area / 3.14159265), ak15_matchedSubjet1_idx, ak15_matchedSubjet2_idx)")
+
+            .Define("dR_ak15_Subjet_tau1",
+                "ak15_matchedSubjet1_idx >= 0 ? "
+                "dR(ak15_Subjet_eta[0], ak15_Subjet_phi[0], "
+                "GenPart_eta[ak15_matchedSubjet1_tauIdx], GenPart_phi[ak15_matchedSubjet1_tauIdx]) : "
+                "kMissing")
+
+            .Define("dR_ak15_Subjet_tau2",
+                "ak15_matchedSubjet2_idx >= 0 ? "
+                "dR(ak15_Subjet_eta[1], ak15_Subjet_phi[1], "
+                "GenPart_eta[ak15_matchedSubjet2_tauIdx], GenPart_phi[ak15_matchedSubjet2_tauIdx]) : "
+                "kMissing");
+    }
 
     std::string hadhad = require_hadhad ? "_hadhad" : "";
     

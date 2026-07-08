@@ -12,6 +12,22 @@
 #include <TLatex.h>
 #include <TStyle.h>
 
+TString CutMissingValues(const TString& expr, float km = -998.f) {
+
+    if (expr.BeginsWith("abs(")) {
+        TString inner = expr;
+        inner.ReplaceAll("abs(", "");
+        inner.ReplaceAll(")", "");
+        return Form("%s > %f", inner.Data(), km);
+    }
+    if (expr.Contains("/")) {
+        TObjArray* parts = expr.Tokenize("/");
+        TString num = ((TObjString*)parts->At(0))->GetString();
+        TString den = ((TObjString*)parts->At(1))->GetString();
+        return Form("(%s > %f) && (%s > %f)", num.Data(), km, den.Data(), km);
+    }
+    return Form("%s > %f", expr.Data(), km);
+}
 
 void Plots(bool AK4 = true, bool AK8 = true, bool AK15 = true,  bool Tau = true,
         const char* params = "X_mass/X_pt, X_eta",
@@ -118,7 +134,7 @@ void Plots(bool AK4 = true, bool AK8 = true, bool AK15 = true,  bool Tau = true,
             
             // Unique name for every hist
             TString hName = Form("h4_%d", i);
-            if (AK4_tree->Draw(expr + ">>" + hName, "") == -1) {
+            if (AK4_tree->Draw(expr + ">>" + hName, CutMissingValues(expr)) == -1) {
                 std::cerr << "Parameter " << expr << " doesn't exist!"  << std::endl;
                 return;
             };
@@ -140,7 +156,7 @@ void Plots(bool AK4 = true, bool AK8 = true, bool AK15 = true,  bool Tau = true,
             
             TString hName = Form("h8_%d", i);
 
-            if (AK8_tree->Draw(expr + ">>" + hName, "") == -1) {
+            if (AK8_tree->Draw(expr + ">>" + hName, CutMissingValues(expr)) == -1) {
                 std::cerr << "Parameter " << expr << " doesn't exist!"  << std::endl;
                 return;
             };
@@ -160,7 +176,7 @@ void Plots(bool AK4 = true, bool AK8 = true, bool AK15 = true,  bool Tau = true,
             expr.ReplaceAll("X", "ak15"); 
             
             TString hName = Form("h15_%d", i);
-            if (AK15_tree->Draw(expr + ">>" + hName, "") == -1) {
+            if (AK15_tree->Draw(expr + ">>" + hName, CutMissingValues(expr)) == -1) {
                 std::cerr << "Parameter " << expr << " doesn't exist!"  << std::endl;
                 return;
             };
@@ -180,7 +196,7 @@ void Plots(bool AK4 = true, bool AK8 = true, bool AK15 = true,  bool Tau = true,
             expr.ReplaceAll("X", "tau"); 
             
             TString hName = Form("htau_%d", i);
-            if (Tau_tree->Draw(expr + ">>" + hName, "") == -1) {
+            if (Tau_tree->Draw(expr + ">>" + hName, CutMissingValues(expr)) == -1) {
                 std::cerr << "Parameter " << expr << " doesn't exist!"  << std::endl;
                 return;
             };
@@ -208,7 +224,8 @@ void Plots(bool AK4 = true, bool AK8 = true, bool AK15 = true,  bool Tau = true,
             hs->GetYaxis()->SetTitle("# of jets");
         }
         hs->GetYaxis()->SetTitleOffset(2.5);
-        hs->GetXaxis()->SetRangeUser(0, 1000);
+        double xmax = hs->GetXaxis()->GetXmax();
+        hs->GetXaxis()->SetRangeUser(0, xmax * 1.05);
     }
 
     c1->cd(0); 
