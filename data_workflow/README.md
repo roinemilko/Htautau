@@ -4,7 +4,7 @@ The purpose of this code is to reproducibly perform jet matching on AK4, AK8 and
 flowchart LR
 A[NanoAOD Data] --> B[Skimming and jet matching] 
 B-->C[AK4_channel.root]
-B-->D[AK8._channel.root]
+B-->D[fatJet._channel.root]
 B-->E[AK15_channel.root ]
 B-->F[Tau_channel.root]
 B-->G[RawEventData_channel.root]
