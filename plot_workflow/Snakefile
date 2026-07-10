@@ -24,6 +24,7 @@ JET_NAMES = {
 }
 
 REQUESTED_JETS = [j for j in JET_NAMES.keys() if j not in EXCLUDED_JETS]
+REQUESTED_SUBJETS = [j for j in REQUESTED_JETS if j in ["AK8", "AK15"]]
 
 _clean_jet = (
     JET_PARAMS
@@ -112,6 +113,12 @@ EXPECTED_CHANNEL_EFF_PLOTS = [
     for dataset in DATA
 ]
 
+EXPECTED_SUBJET_PLOTS = [
+    f"plots/{dataset}/{_ak8_str}{_ak15_str}{_clean_subjet}{suffix}_plot.png"
+    for dataset in DATA
+    for suffix in SUFFIXES
+] if REQUESTED_SUBJETS else []
+
 rule all:
     input:
         EXPECTED_JET_PLOTS,
@@ -121,9 +128,31 @@ rule all:
         EXPECTED_KINEMATICS_PLOTS,
         EXPECTED_EFF_DIFF_PLOTS,
         EXPECTED_DECAY_PROD_PLOTS,
-        EXPECTED_CHANNEL_EFF_PLOTS
+        EXPECTED_CHANNEL_EFF_PLOTS,
+        EXPECTED_SUBJET_PLOTS
+
+rule jet_plots:
+    input:
+        EXPECTED_JET_PLOTS
+
+rule subjet_plots:
+    EXPECTED_SUBJET_PLOTS
 
 rule jet_effs:
+    input:
+        EXPECTED_JET_EFF_PLOTS
+
+rule subjet_effs:
+    input:
+        EXPECTED_SUBJET_EFF_PLOTS
+
+rule effs_channel:
+    input:
+        EXPECTED_EFF_DIFF_PLOTS,
+        EXPECTED_DECAY_PROD_PLOTS,
+        EXPECTED_CHANNEL_EFF_PLOTS
+
+rule run_jet_effs:
     input:
         raw  = lambda w: f"{DATA_MAP[w.dataset]}/RawEventInfo{w.suffix}.root",
         ak4  = lambda w: f"{DATA_MAP[w.dataset]}/Jet{w.suffix}.root",
@@ -139,7 +168,7 @@ rule jet_effs:
         root -l -b -q 'PlotEfficiencies.C("{output.plot}", "{input.raw}", "{input.ak4}", "{input.ak8}", "{input.ak15}", "{input.tau}", {params.is_hadhad})'
         """
 
-rule subjet_effs:
+rule run_subjet_effs:
     input:
         raw  = lambda w: f"{DATA_MAP[w.dataset]}/RawEventInfo{w.suffix}.root",
         ak8  = lambda w: f"{DATA_MAP[w.dataset]}/fatJet{w.suffix}.root",
@@ -160,7 +189,7 @@ rule clustering_kinematics:
         "plots/{dataset}/SanityCheck.png",
         expand("plots/{{dataset}}/SanityCheckKinematics{{suffix}}_dR_{jet_id}_nolim{type}.png", jet_id=["Jet", "fJ", "AK15"], type=["", "_All"])
 
-rule clustering_dRplot:
+rule run_clustering_dRplot:
     input:
         hadhad = lambda w: f"{DATA_MAP[w.dataset]}/RawEventInfo_hadhad.root",
         nohadhad = lambda w: f"{DATA_MAP[w.dataset]}/RawEventInfo.root"
@@ -171,7 +200,7 @@ rule clustering_dRplot:
         root -l -b -q 'SanityCheck.C("{input.hadhad}", "{input.nohadhad}", "{output.plot}")'
         """
 
-rule clustering_Scatters:
+rule run_clustering_Scatters:
     input:
         raw = lambda w: f"{DATA_MAP[w.dataset]}/RawEventInfo{w.suffix}.root"
     output:
@@ -183,7 +212,7 @@ rule clustering_Scatters:
         root -l -b -q 'SanityCheckOfSanityCheck.C("{input.raw}", "{params.prefix}")'
         """
 
-rule eff_diffs:
+rule run_eff_diffs:
     input:
         raw_had  = lambda w: f"{DATA_MAP[w.dataset]}/RawEventInfo_hadhad.root",
         raw_inc  = lambda w: f"{DATA_MAP[w.dataset]}/RawEventInfo.root",
@@ -203,7 +232,7 @@ rule eff_diffs:
         root -l -b -q 'PlotEffDiffs.C("{params.save_path}", "{params.jet_path}")'
         """
 
-rule decay_prod_fractions:
+rule run_decay_prod_fractions:
     input:
         raw = lambda w: f"{DATA_MAP[w.dataset]}/RawEventInfo{w.suffix}.root"
     output:
@@ -215,7 +244,7 @@ rule decay_prod_fractions:
         root -l -b -q 'PlotDecayProdEnergyFractions.C("{input.raw}", "{output.plot}", {params.normalize})'
         """
 
-rule channel_efficiencies:
+rule run_channel_efficiencies:
     input:
         raw  = lambda w: f"{DATA_MAP[w.dataset]}/RawEventInfo.root",
         ak4  = lambda w: f"{DATA_MAP[w.dataset]}/Jet.root",
@@ -264,5 +293,5 @@ rule run_subjet_plot:
         jet_path = lambda w: DATA_MAP[w.dataset]
     shell:
         """
-        root -l -b -q 'plotter/Plots.C(false, {params.ak8}, {params.ak15}, false, "{params.plot_params}", "{output}", {params.normalize}, {params.hadhad}, "{params.jet_path}")'
+        root -l -b -q 'Plots.C(false, {params.ak8}, {params.ak15}, false, "{params.plot_params}", "{output}", {params.normalize}, {params.hadhad}, "{params.jet_path}")'
         """

@@ -8,7 +8,6 @@ DATA_DIRS = {
 _use_data_str = config.get("data", "MADGRAPH, POWHEG") 
 _channel_mode = config.get("channel", "both")
 _excluded_str = config.get("exclude", "")
-NORMALIZE     = config.get("normalize", "true")
 
 DATA = [x.strip() for x in _use_data_str.split(",")]
 EXCLUDED_JETS = [x.strip() for x in _excluded_str.split(",")] if _excluded_str else []
