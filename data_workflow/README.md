@@ -14,7 +14,7 @@ The basic command to run the workflow is
 ```bash
 ./run.sh skim --cores "" --config # optional flags
 ```
-The workflow runs in [LCG 109](https://lcginfo.cern.ch/release/109/). In the cores flag indicate how many cores you want to use, and snakemake will automatically paralellize the process. Each process runs with 6 cores so the full analysis run 12 or 24 cores is recommended. The flags are as follows
+The workflow runs in [LCG 109](https://lcginfo.cern.ch/release/109/). In the cores flag indicate how many cores you want to use, and snakemake will automatically paralellize the process. By default each skimming process runs with 6 cores so for the full analysis run 12 or 24 cores is recommended. The flags are as follows
 <center>
 
 | Flag (set to preset value) | Usage |
