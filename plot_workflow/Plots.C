@@ -203,7 +203,7 @@ void Plots(bool AK4 = true, bool AK8 = true, bool AK15 = true,  bool Tau = true,
             
             TH1F* h = (TH1F*)gDirectory->Get(hName);
             if (h) {
-                h->SetLineColor(kGreen + 2);
+                h->SetLineColor(kBlack);
                 h->SetLineWidth(2);
                 if (normalize) {h->Scale(1./h->Integral());}
                 hs->Add(h); 
@@ -224,8 +224,34 @@ void Plots(bool AK4 = true, bool AK8 = true, bool AK15 = true,  bool Tau = true,
             hs->GetYaxis()->SetTitle("# of jets");
         }
         hs->GetYaxis()->SetTitleOffset(2.5);
-        double xmax = hs->GetXaxis()->GetXmax();
-        hs->GetXaxis()->SetRangeUser(0, xmax * 1.05);
+        
+        double dynamic_xmax = 0.0;
+        TIter next(hs->GetHists());
+        TH1F *hist;
+        
+        while ((hist = (TH1F*)next())) {
+            double total_integral = hist->Integral();
+            if (total_integral > 0) {
+                double running_sum = 0;
+                for (int b = 1; b <= hist->GetNbinsX(); ++b) {
+                    running_sum += hist->GetBinContent(b);
+                    if (running_sum / total_integral > 0.95) {
+                        double bin_edge = hist->GetBinLowEdge(b) + hist->GetBinWidth(b);
+                        if (bin_edge > dynamic_xmax) {
+                            dynamic_xmax = bin_edge;
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+        
+        if (dynamic_xmax > 0) {
+            hs->GetXaxis()->SetRangeUser(0, dynamic_xmax * 1.10);
+        } else {
+            double default_xmax = hs->GetXaxis()->GetXmax();
+            hs->GetXaxis()->SetRangeUser(0, default_xmax * 1.05);
+        }
     }
 
     c1->cd(0); 

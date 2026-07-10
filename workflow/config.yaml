@@ -1,4 +1,0 @@
-exclude: none
-require-hadhad: false
-latency-wait: 120
-cores: all

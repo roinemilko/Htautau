@@ -21,7 +21,8 @@ std::map<TString, std::array<float, 6>> Ranges {
 float higgs_mass = 125.0f;
 
 
-void SanityCheckOfSanityCheck_run(const char* jet_id, const char* file_hadhad = "/eos/user/m/mroine/NanoTuples/Htautau/workflow/jets/GluGluH-HTo2Tau_Par-M-125_TuneCP5_13p6TeV_powheg-pythia8/RawEventInfo_hadhad.root") {
+void SanityCheckOfSanityCheck_run(const char* jet_id, const char* file_hadhad = "/eos/user/m/mroine/NanoTuples/Htautau/workflow/jets/GluGluH-HTo2Tau_Par-M-125_TuneCP5_13p6TeV_powheg-pythia8/RawEventInfo_hadhad.root",
+                                    const char* out_file = "") {
     TFile* f_hadhad = new TFile(file_hadhad, "READ");
     TTree* t_hadhad = (TTree*)f_hadhad->Get("Events");
 
@@ -216,16 +217,16 @@ void SanityCheckOfSanityCheck_run(const char* jet_id, const char* file_hadhad = 
     latex.SetTextSize(0.04);
     latex.DrawLatex(0.075, 0.83, "H #rightarrow #tau#tau (125 GeV)");
 
-    TString filename_c1 = "/eos/user/m/mroine/www/GluGluH-HTo2Tau_Par-M-125_TuneCP5_13p6TeV_powheg-pythia8/" + plot_param + "_Clustering_Scatter_All.png";
-    TString filename_c2 = "/eos/user/m/mroine/www/GluGluH-HTo2Tau_Par-M-125_TuneCP5_13p6TeV_powheg-pythia8/" + plot_param + "_Clustering_Scatter.png";
+    TString filename_c1 = TString(out_file) + "_" + plot_param + "_All.png";
+    TString filename_c2 = TString(out_file) + "_" + plot_param +  + ".png";
     c2.SaveAs(filename_c1);
     c1.SaveAs(filename_c2);
 }
 
-void SanityCheckOfSanityCheck() {
-    SanityCheckOfSanityCheck_run("Jet");
-    SanityCheckOfSanityCheck_run("fJ");
-    SanityCheckOfSanityCheck_run("AK15");
+void SanityCheckOfSanityCheck(const char* input_file, const char* out_prefix) {
+    SanityCheckOfSanityCheck_run("Jet", input_file, out_prefix);
+    SanityCheckOfSanityCheck_run("fJ", input_file, out_prefix);
+    SanityCheckOfSanityCheck_run("AK15", input_file, out_prefix);
     return;
 
 }

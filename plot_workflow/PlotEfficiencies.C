@@ -15,12 +15,15 @@
     #include "TH2F.h"
 
     void PlotEfficiencies(const char* save_path = "/eos/user/m/mroine/www/VBFHHto2B2Tau_Par-CV-1-C2V-0-C3-1_TuneCP5_13p6TeV_madgraph-pythia8",
-        const char* fRaw  = "/eos/user/m/mroine/NanoTuples/Htautau/workflow/jets/VBFHHto2B2Tau_Par-CV-1-C2V-0-C3-1_TuneCP5_13p6TeV_madgraph-pythia8/RawEventInfo_hadhad.root",
-        const char* fAK4  = "/eos/user/m/mroine/NanoTuples/Htautau/workflow/jets/VBFHHto2B2Tau_Par-CV-1-C2V-0-C3-1_TuneCP5_13p6TeV_madgraph-pythia8/Jet_hadhad.root",
-        const char* fAK8  = "/eos/user/m/mroine/NanoTuples/Htautau/workflow/jets/VBFHHto2B2Tau_Par-CV-1-C2V-0-C3-1_TuneCP5_13p6TeV_madgraph-pythia8/fatJet_hadhad.root",
-        const char* fAK15 = "/eos/user/m/mroine/NanoTuples/Htautau/workflow/jets/VBFHHto2B2Tau_Par-CV-1-C2V-0-C3-1_TuneCP5_13p6TeV_madgraph-pythia8/AK15_hadhad.root",
-        const char* fTau = "/eos/user/m/mroine/NanoTuples/Htautau/workflow/jets/VBFHHto2B2Tau_Par-CV-1-C2V-0-C3-1_TuneCP5_13p6TeV_madgraph-pythia8/Tau_hadhad.root"
+        const char* fRaw  = "/eos/user/m/mroine/NanoTuples/Htautau/workflow/jets/VBFHHto2B2Tau_Par-CV-1-C2V-0-C3-1_TuneCP5_13p6TeV_madgraph-pythia8/RawEventInfo.root",
+        const char* fAK4  = "/eos/user/m/mroine/NanoTuples/Htautau/workflow/jets/VBFHHto2B2Tau_Par-CV-1-C2V-0-C3-1_TuneCP5_13p6TeV_madgraph-pythia8/Jet.root",
+        const char* fAK8  = "/eos/user/m/mroine/NanoTuples/Htautau/workflow/jets/VBFHHto2B2Tau_Par-CV-1-C2V-0-C3-1_TuneCP5_13p6TeV_madgraph-pythia8/fatJet.root",
+        const char* fAK15 = "/eos/user/m/mroine/NanoTuples/Htautau/workflow/jets/VBFHHto2B2Tau_Par-CV-1-C2V-0-C3-1_TuneCP5_13p6TeV_madgraph-pythia8/AK15.root",
+        const char* fTau = "/eos/user/m/mroine/NanoTuples/Htautau/workflow/jets/VBFHHto2B2Tau_Par-CV-1-C2V-0-C3-1_TuneCP5_13p6TeV_madgraph-pythia8/Tau.root",
+        const bool hadhad = false
     ) {
+
+        TString hadhad_string = hadhad ? "_hadhad" : "";
 
         TCanvas* c1 = new TCanvas("c1", "", 1800, 1200);
         c1->Divide(3, 2);
@@ -283,6 +286,6 @@
         leg->Draw();
 
 
-        c1->SaveAs(TString(save_path) + "/JetFatJetAK15_eff_vs_genH_pt_PV_npvsGood_genTau_pt_asym_hadhad.png"); 
-        std::cout << "Done! Saved to " << save_path << "/JetFatJetAK15_eff_vs_genH_pt_PV_npvsGood_genTau_pt_asym_hadhad.png" << std::endl;
+        c1->SaveAs(save_path); 
+        std::cout << "Done! Saved to " << save_path << std::endl;
     }

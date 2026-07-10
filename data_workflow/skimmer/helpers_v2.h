@@ -343,8 +343,9 @@ inline ROOT::VecOps::RVec<int> MatchOneJetToHTauTau(
 }
 
 // Similar to MatchJetToHTauTau but matches 2 (AK4) jets with each Jet containing one tau
-// Returns {jetForTau1, jetForTau2, tau1Idx, tau2Idx, higgsIdx}; all -1 on failure.
+// Returns {jetForTau1, jetForTau2, tau1Idx, tau2Idx, higgsIdx}; all -1 on failure. The leading (higher pt) jet is first.
 inline ROOT::VecOps::RVec<int> MatchTwoJetsToHTauTau(
+    const ROOT::VecOps::RVec<float>& jet_pt,
     const ROOT::VecOps::RVec<float>& jet_eta,
     const ROOT::VecOps::RVec<float>& jet_phi,
     const ROOT::VecOps::RVec<int>& goodJet,
@@ -390,6 +391,16 @@ inline ROOT::VecOps::RVec<int> MatchTwoJetsToHTauTau(
     // find AK4 jets for each tau
     const int jet1 = jetForTau(tau1);
     const int jet2 = jetForTau(tau2);
+
+    if (jet1 != -1 && jet2 != -1 && jet1 == jet2) {
+        return fail;
+    }
+
+    if (jet1 != -1 && jet2 != -1) {
+        if (jet_pt[jet2] > jet_pt[jet1]) {
+            return {jet2, jet1, tau2, tau1, higgsIdx};
+        }
+    } 
     return {jet1, jet2, tau1, tau2, higgsIdx};
 }
 

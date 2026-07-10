@@ -1,0 +1,268 @@
+DATA_MAP = {
+    "POWHEG": "/eos/user/m/mroine/NanoTuples/Htautau/data_workflow/jets/POWHEG",
+    "MADGRAPH": "/eos/user/m/mroine/NanoTuples/Htautau/data_workflow/jets/MADGRAPH"
+}
+
+FILES = ["Jet", "FatJet", "AK15", "Tau", "RawEventInfo"]
+_HADHAD = "_hadhad"
+
+_use_data_str = config.get("data", "MADGRAPH, POWHEG") 
+_channel_mode = config.get("channel", "both")
+
+_excluded_str   = config.get("exclude", "")
+JET_PARAMS      = config.get("jet-params", "X_mass, X_pt, X_mass/X_pt, abs(X_eta)")
+SUBJET_PARAMS   = config.get("subjet-params", "X_Subjet_mass, X_Subjet_pt, X_Subjet_mass/X_Subjet_pt, abs(X_Subjet_eta)") 
+
+EXCLUDED_JETS = [x.strip() for x in _excluded_str.split(",")] if _excluded_str else []
+NORMALIZE     = config.get("normalize", "true")
+
+JET_NAMES = {
+    "AK4": "Jet",
+    "AK8": "fatJet",
+    "AK15": "AK15",
+    "Tau": "Tau"
+}
+
+REQUESTED_JETS = [j for j in JET_NAMES.keys() if j not in EXCLUDED_JETS]
+
+_clean_jet = (
+    JET_PARAMS
+    .replace("X", "")
+    .replace("_", "")
+    .replace(" ", "")
+    .replace(",", "_")
+    .replace("/", "over")
+)
+
+_clean_subjet = (
+    SUBJET_PARAMS
+    .replace("X", "")
+    .replace("_", "")
+    .replace(" ", "")
+    .replace(",", "_")
+    .replace("/", "over")
+)
+
+
+
+_ak4_str  = "Jet_"    if "AK4"  in REQUESTED_JETS else ""
+_ak8_str  = "FatJet_" if "AK8"  in REQUESTED_JETS else ""
+_ak15_str = "AK15_"   if "AK15" in REQUESTED_JETS else ""
+_tau_str  = "Tau_"    if "Tau"  in REQUESTED_JETS else ""
+
+DATA = [x.strip() for x in _use_data_str.split(",")]
+
+SUFFIXES = []
+if _channel_mode in ["both", "inclusive_only"]:
+    SUFFIXES.append("") 
+if _channel_mode in ["both", "hadhad_only"]:
+    SUFFIXES.append(_HADHAD) 
+
+CUT_LEVELS = ["loose", "tight"]
+
+wildcard_constraints:
+    suffix = "_hadhad|",
+    cut_level = "loose|tight"
+
+EXPECTED_JET_PLOTS = [
+    f"plots/{dataset}/{_ak4_str}{_ak8_str}{_ak15_str}{_tau_str}{_clean_jet}{suffix}_plot.png"
+    for dataset in DATA
+    for suffix in SUFFIXES
+]
+
+EXPECTED_JET_EFF_PLOTS = [
+    f"plots/{dataset}/JetFatJetAK15_eff{suffix}.png"
+    for dataset in DATA
+    for suffix in SUFFIXES
+]
+
+EXPECTED_SUBJET_EFF_PLOTS = [
+    f"plots/{dataset}/SubjetMatchingEff_{cut_level}_vs_genHpt{suffix}.png"
+    for dataset in DATA
+    for suffix in SUFFIXES
+    for cut_level in CUT_LEVELS
+]
+
+EXPECTED_SANITY_PLOTS = [
+    f"plots/{dataset}/SanityCheck.png"
+    for dataset in DATA
+]
+
+EXPECTED_KINEMATICS_PLOTS = [
+    f"plots/{dataset}/SanityCheckKinematics{suffix}_dR_{jet_id}_nolim{type_suffix}.png"
+    for dataset in DATA
+    for suffix in SUFFIXES
+    for jet_id in ["Jet", "fJ", "AK15"]
+    for type_suffix in ["", "_All"]
+]
+
+EXPECTED_EFF_DIFF_PLOTS = [
+    f"plots/{dataset}/MatchingEffDiff_inclusive_minus_hadhad_allJets.png"
+    for dataset in DATA
+]
+
+EXPECTED_DECAY_PROD_PLOTS = [
+    f"plots/{dataset}/EnergyFractionsOfDecayProds{suffix}.png"
+    for dataset in DATA
+    for suffix in SUFFIXES
+]
+
+EXPECTED_CHANNEL_EFF_PLOTS = [
+    f"plots/{dataset}/effAndResponse_byChannel_grid.png"
+    for dataset in DATA
+]
+
+rule all:
+    input:
+        EXPECTED_JET_PLOTS,
+        EXPECTED_JET_EFF_PLOTS,
+        EXPECTED_SUBJET_EFF_PLOTS,
+        EXPECTED_SANITY_PLOTS,
+        EXPECTED_KINEMATICS_PLOTS,
+        EXPECTED_EFF_DIFF_PLOTS,
+        EXPECTED_DECAY_PROD_PLOTS,
+        EXPECTED_CHANNEL_EFF_PLOTS
+
+rule jet_effs:
+    input:
+        raw  = lambda w: f"{DATA_MAP[w.dataset]}/RawEventInfo{w.suffix}.root",
+        ak4  = lambda w: f"{DATA_MAP[w.dataset]}/Jet{w.suffix}.root",
+        ak8  = lambda w: f"{DATA_MAP[w.dataset]}/fatJet{w.suffix}.root",
+        ak15 = lambda w: f"{DATA_MAP[w.dataset]}/AK15{w.suffix}.root",
+        tau  = lambda w: f"{DATA_MAP[w.dataset]}/Tau{w.suffix}.root"
+    output:
+        plot = "plots/{dataset}/JetFatJetAK15_eff{suffix}.png"
+    params:
+        is_hadhad = lambda w: "true" if w.suffix == "_hadhad" else "false"
+    shell:
+        """
+        root -l -b -q 'PlotEfficiencies.C("{output.plot}", "{input.raw}", "{input.ak4}", "{input.ak8}", "{input.ak15}", "{input.tau}", {params.is_hadhad})'
+        """
+
+rule subjet_effs:
+    input:
+        raw  = lambda w: f"{DATA_MAP[w.dataset]}/RawEventInfo{w.suffix}.root",
+        ak8  = lambda w: f"{DATA_MAP[w.dataset]}/fatJet{w.suffix}.root",
+        ak15 = lambda w: f"{DATA_MAP[w.dataset]}/AK15{w.suffix}.root"
+    output:
+        plot = "plots/{dataset}/SubjetMatchingEff_{cut_level}_vs_genHpt{suffix}.png"
+    params:
+        is_hadhad = lambda w: "true" if w.suffix == "_hadhad" else "false",
+        cut_ak8   = lambda w: "fj_nMatchedSubjets >= 1" if w.cut_level == "loose" else "fj_nMatchedSubjets >= 2",
+        cut_ak15  = lambda w: "ak15_nMatchedSubjets >= 1" if w.cut_level == "loose" else "ak15_nMatchedSubjets >= 2"
+    shell:
+        """
+        root -l -b -q 'PlotSubjetMatchingEffs.C("{output.plot}", "{input.raw}", "{input.ak8}", "{input.ak15}", "{params.cut_ak8}", "{params.cut_ak15}")'
+        """
+
+rule clustering_kinematics:     
+    input:
+        "plots/{dataset}/SanityCheck.png",
+        expand("plots/{{dataset}}/SanityCheckKinematics{{suffix}}_dR_{jet_id}_nolim{type}.png", jet_id=["Jet", "fJ", "AK15"], type=["", "_All"])
+
+rule clustering_dRplot:
+    input:
+        hadhad = lambda w: f"{DATA_MAP[w.dataset]}/RawEventInfo_hadhad.root",
+        nohadhad = lambda w: f"{DATA_MAP[w.dataset]}/RawEventInfo.root"
+    output:
+        plot = "plots/{dataset}/SanityCheck.png"
+    shell:
+        """
+        root -l -b -q 'SanityCheck.C("{input.hadhad}", "{input.nohadhad}", "{output.plot}")'
+        """
+
+rule clustering_Scatters:
+    input:
+        raw = lambda w: f"{DATA_MAP[w.dataset]}/RawEventInfo{w.suffix}.root"
+    output:
+        plots = expand("plots/{{dataset}}/SanityCheckKinematics{{suffix}}_dR_{jet_id}_nolim{type}.png", jet_id=["Jet", "fJ", "AK15"], type=["", "_All"])
+    params:
+        prefix = "plots/{dataset}/SanityCheckKinematics{suffix}"
+    shell:
+        """
+        root -l -b -q 'SanityCheckOfSanityCheck.C("{input.raw}", "{params.prefix}")'
+        """
+
+rule eff_diffs:
+    input:
+        raw_had  = lambda w: f"{DATA_MAP[w.dataset]}/RawEventInfo_hadhad.root",
+        raw_inc  = lambda w: f"{DATA_MAP[w.dataset]}/RawEventInfo.root",
+        ak4_had  = lambda w: f"{DATA_MAP[w.dataset]}/Jet_hadhad.root",
+        ak4_inc  = lambda w: f"{DATA_MAP[w.dataset]}/Jet.root",
+        ak8_had  = lambda w: f"{DATA_MAP[w.dataset]}/fatJet_hadhad.root",
+        ak8_inc  = lambda w: f"{DATA_MAP[w.dataset]}/fatJet.root",
+        ak15_had = lambda w: f"{DATA_MAP[w.dataset]}/AK15_hadhad.root",
+        ak15_inc = lambda w: f"{DATA_MAP[w.dataset]}/AK15.root"
+    output:
+        plot = "plots/{dataset}/MatchingEffDiff_inclusive_minus_hadhad_allJets.png"
+    params:
+        save_path = "plots/{dataset}",
+        jet_path  = lambda w: DATA_MAP[w.dataset]
+    shell:
+        """
+        root -l -b -q 'PlotEffDiffs.C("{params.save_path}", "{params.jet_path}")'
+        """
+
+rule decay_prod_fractions:
+    input:
+        raw = lambda w: f"{DATA_MAP[w.dataset]}/RawEventInfo{w.suffix}.root"
+    output:
+        plot = "plots/{dataset}/EnergyFractionsOfDecayProds{suffix}.png"
+    params:
+        normalize = "true"
+    shell:
+        """
+        root -l -b -q 'PlotDecayProdEnergyFractions.C("{input.raw}", "{output.plot}", {params.normalize})'
+        """
+
+rule channel_efficiencies:
+    input:
+        raw  = lambda w: f"{DATA_MAP[w.dataset]}/RawEventInfo.root",
+        ak4  = lambda w: f"{DATA_MAP[w.dataset]}/Jet.root",
+        ak8  = lambda w: f"{DATA_MAP[w.dataset]}/fatJet.root",
+        ak15 = lambda w: f"{DATA_MAP[w.dataset]}/AK15.root"
+    output:
+        plot = "plots/{dataset}/effAndResponse_byChannel_grid.png"
+    params:
+        save_path = "plots/{dataset}",
+        jet_path  = lambda w: DATA_MAP[w.dataset]
+    shell:
+        """
+        root -l -b -q 'DecayChannelvEfficiency.C("{params.save_path}", "{params.jet_path}")'
+        """
+
+rule run_jet_plot:
+    input:
+        lambda w: [f"{DATA_MAP[w.dataset]}/{JET_NAMES[j]}{w.suffix}.root" for j in REQUESTED_JETS]
+    output:
+        f"plots/{{dataset}}/{_ak4_str}{_ak8_str}{_ak15_str}{_tau_str}{_clean_jet}{{suffix}}_plot.png"
+    params:
+        ak4 = "true" if "AK4" in REQUESTED_JETS else "false",
+        ak8 = "true" if "AK8" in REQUESTED_JETS else "false",
+        ak15 = "true" if "AK15" in REQUESTED_JETS else "false",
+        tau = "true" if "Tau" in REQUESTED_JETS else "false",
+        plot_params = JET_PARAMS,
+        normalize = NORMALIZE,
+        hadhad = lambda w: "true" if w.suffix == "_hadhad" else "false",
+        jet_path = lambda w: DATA_MAP[w.dataset]
+    shell:
+        """
+        root -l -b -q 'Plots.C({params.ak4}, {params.ak8}, {params.ak15}, {params.tau}, "{params.plot_params}", "{output}", {params.normalize}, {params.hadhad}, "{params.jet_path}")'
+        """
+
+rule run_subjet_plot:
+    input:
+        lambda w: [f"{DATA_MAP[w.dataset]}/{JET_NAMES[j]}{w.suffix}.root" for j in REQUESTED_JETS]
+    output:
+        f"plots/{{dataset}}/{_ak8_str}{_ak15_str}{_clean_subjet}{{suffix}}_plot.png"
+    params:
+        ak8 = "true" if "AK8" in REQUESTED_JETS else "false",
+        ak15 = "true" if "AK15" in REQUESTED_JETS else "false",
+        plot_params = SUBJET_PARAMS,
+        normalize = NORMALIZE,
+        hadhad = lambda w: "true" if w.suffix == "_hadhad" else "false",
+        jet_path = lambda w: DATA_MAP[w.dataset]
+    shell:
+        """
+        root -l -b -q 'plotter/Plots.C(false, {params.ak8}, {params.ak15}, false, "{params.plot_params}", "{output}", {params.normalize}, {params.hadhad}, "{params.jet_path}")'
+        """

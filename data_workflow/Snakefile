@@ -1,0 +1,84 @@
+import glob
+
+DATA_DIRS = {
+    "MADGRAPH": "/eos/cms/store/group/phys_higgs/ttHcc/NanoAOD/NanoTuples/2024/mc/VBFHHto2B2Tau_Par-CV-1-C2V-0-C3-1_TuneCP5_13p6TeV_madgraph-pythia8/NanoTuples-uParTv3-parTlepID-NanoAODv15_RunIII2024Summer24MiniAODv6-150X_v2-v2/260608_185815/0000",
+    "POWHEG":   "/eos/cms/store/group/phys_higgs/ttHcc/NanoAOD/NanoTuples/2024/mc/GluGluH-HTo2Tau_Par-M-125_TuneCP5_13p6TeV_powheg-pythia8/NanoTuples-uParTv3-parTlepID-NanoAODv15_RunIII2024Summer24MiniAODv6-150X_v2-v2/260608_185433/0000"
+}
+
+_use_data_str = config.get("data", "MADGRAPH, POWHEG") 
+_channel_mode = config.get("channel", "both")
+_excluded_str = config.get("exclude", "")
+NORMALIZE     = config.get("normalize", "true")
+
+DATA = [x.strip() for x in _use_data_str.split(",")]
+EXCLUDED_JETS = [x.strip() for x in _excluded_str.split(",")] if _excluded_str else []
+
+
+SUFFIXES = []
+if _channel_mode in ["both", "inclusive_only"]:
+    SUFFIXES.append("") 
+if _channel_mode in ["both", "hadhad_only"]:
+    SUFFIXES.append("_hadhad") 
+
+
+JET_NAMES = {
+    "AK4": "Jet",
+    "AK8": "fatJet",
+    "AK15": "AK15",
+    "Tau": "Tau"
+}
+
+REQUESTED_JETS = [j for j in JET_NAMES.keys() if j not in EXCLUDED_JETS]
+
+
+EXPECTED_SKIMS = [
+    f"jets/{dataset}/RawEventInfo{suffix}.root"
+    for dataset in DATA
+    for suffix in SUFFIXES
+] + [
+    f"jets/{dataset}/{JET_NAMES[j]}{suffix}.root"
+    for dataset in DATA
+    for suffix in SUFFIXES
+    for j in REQUESTED_JETS
+]
+
+wildcard_constraints:
+    dataset = "|".join(DATA_DIRS.keys()),
+    suffix  = "_hadhad|"
+
+
+rule skim:
+    input:
+        EXPECTED_SKIMS
+
+rule skim_run:
+    input:
+        in_files = lambda w: glob.glob(f"{DATA_DIRS[w.dataset]}/*.root"),
+        so = "skimmer/BuildData_C.so"
+    output:
+        raw = "jets/{dataset}/RawEventInfo{suffix}.root",
+        jets = [f"jets/{{dataset}}/{JET_NAMES[j]}{{suffix}}.root" for j in REQUESTED_JETS]
+    threads: 6
+    params:
+        pattern = lambda w: f"{DATA_DIRS[w.dataset]}/*.root",
+        hadhad  = lambda w: "true" if w.suffix == "_hadhad" else "false",
+        out_path= "jets/{dataset}",
+        
+        inc_ak4  = "true" if "AK4" in REQUESTED_JETS else "false",
+        inc_ak8  = "true" if "AK8" in REQUESTED_JETS else "false",
+        inc_ak15 = "true" if "AK15" in REQUESTED_JETS else "false",
+        inc_tau  = "true" if "Tau" in REQUESTED_JETS else "false"
+    shell:
+        """
+        root -l -b -q -e 'gSystem->Load("{input.so}"); BuildData("{params.pattern}", {params.inc_ak4}, {params.inc_ak8}, {params.inc_ak15}, true, {params.inc_tau}, {params.hadhad}, "{params.out_path}", {threads});'
+        """
+
+rule compile:
+    input:
+        "skimmer/BuildData.C"
+    output:
+        "skimmer/BuildData_C.so"
+    shell:
+        """
+        root -l -b -q -e 'int status = gSystem->CompileMacro(\"skimmer/BuildData.C\", \"kf\"); gSystem->Exit(status == 1 ? 0 : 1);'
+        """

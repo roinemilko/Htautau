@@ -188,7 +188,6 @@ for (int j = 0; j < 3; ++j) {
         ffit[ch] = f2->GetParameter(0);
     }
 
-    // ---- predicted "all" = entry-weighted mix of fitted f, same shared C ----
     double fAllPred = 0.509;
 
     TF1* fAll = new TF1(Form("fAll_%d", j), "[0] + [1]/x", vMin, vMax);

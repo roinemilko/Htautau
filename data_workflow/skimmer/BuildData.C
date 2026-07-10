@@ -6,7 +6,7 @@
 #include "BuildData.h"
 #include "helpers_v2.h"
 #include "ROOT/RDataFrame.hxx"
-
+#include <ROOT/RDFHelpers.hxx>
 
 // Safe wrappers for some of the helper functions
 inline float dphi(float jetphi, float metphi) {
@@ -25,15 +25,19 @@ void BuildData(
     const char* file_pattern = "nano_*.root",
     bool include_AK4 = true, bool include_AK8 = true, bool include_AK15 = true, bool include_RawData = false, bool include_Tau = true,
     bool require_hadhad = false,
-    const char* save_directory = "jets/"
+    const char* save_directory = "jets/",
+    int threads = 1
 ) {
+
+    if (threads > 1) {
+        ROOT::EnableImplicitMT(threads);
+    }
 
     if (!include_AK4 && !include_AK8 && !include_AK15 && !include_RawData && !include_Tau) {
         std::cerr << "You have to include somehting" <<std::endl;
         return;
     }
     
-    ROOT::EnableImplicitMT();
     ROOT::RDataFrame df("Events", file_pattern);
 
 
@@ -105,8 +109,8 @@ void BuildData(
     if (include_Tau) {
         df_Tau = df_truth
             .Define("goodTaus", Form("MakeGoodJetMask(Tau_pt, Tau_eta, %f, %f)", 0.f, AK4_eta_max))
-            .Define("TauMatch", "MatchTwoJetsToHTauTau(Tau_eta, Tau_phi, goodTaus, GenPart_eta, GenPart_phi, GenPart_pdgId, GenPart_genPartIdxMother, GenPart_statusFlags, 0.4f)")
-            .Filter("TauMatch[0] >= 0", "Valid Tau match")
+            .Define("TauMatch", "MatchTwoJetsToHTauTau(Tau_pt, Tau_eta, Tau_phi, goodTaus, GenPart_eta, GenPart_phi, GenPart_pdgId, GenPart_genPartIdxMother, GenPart_statusFlags, 0.4f)")
+            .Filter("TauMatch[0] >= 0 && TauMatch[1] >= 0", "Valid Tau match")
             .Define("matchedTausIdx", "ROOT::VecOps::RVec<int>{TauMatch[0], TauMatch[1]}")
             .Define("matchedGenTau1Idx", "TauMatch[2]")
             .Define("matchedGenTau2Idx", "TauMatch[3]")
@@ -163,7 +167,7 @@ void BuildData(
     if (include_AK4) {
         df_AK4 = df_truth
             .Define("goodJets", Form("MakeGoodJetMask(Jet_pt, Jet_eta, %f, %f)", AK4_min_pt, AK4_eta_max))
-            .Define("AK4Match", "MatchTwoJetsToHTauTau(Tau_eta, Tau_phi, goodJets, GenPart_eta, GenPart_phi, GenPart_pdgId, GenPart_genPartIdxMother, GenPart_statusFlags, 0.4f)")
+            .Define("AK4Match", "MatchTwoJetsToHTauTau(Jet_pt, Jet_eta, Jet_phi, goodJets, GenPart_eta, GenPart_phi, GenPart_pdgId, GenPart_genPartIdxMother, GenPart_statusFlags, 0.4f)")
             .Filter("AK4Match[0] >= 0 && AK4Match[1] >= 0", "Valid AK4 match")
             .Define("matchedAK4JetIdx", "ROOT::VecOps::RVec<int>{AK4Match[0], AK4Match[1]}")
             .Define("matchedTau1Idx", "AK4Match[2]")
@@ -276,7 +280,7 @@ void BuildData(
             .Define("fj_nSubjetsPerEventTotal", "nSubJet")
             .Define("fj_goodSubjets", "MakeGoodSubjetMask(SubJet_eta, SubJet_phi, fj_eta, fj_phi, 0.8f, 0.f)")
             .Define("fj_nSubjets", "ROOT::VecOps::Sum(fj_goodSubjets)")
-            .Define("fj_matchedSubjets", "MatchTwoJetsToHTauTau(SubJet_eta, SubJet_phi, fj_goodSubjets, GenPart_eta, GenPart_phi, GenPart_pdgId, GenPart_genPartIdxMother, GenPart_statusFlags, 0.4f)")
+            .Define("fj_matchedSubjets", "MatchTwoJetsToHTauTau(SubJet_pt, SubJet_eta, SubJet_phi, fj_goodSubjets, GenPart_eta, GenPart_phi, GenPart_pdgId, GenPart_genPartIdxMother, GenPart_statusFlags, 0.4f)")
 
             .Define("fj_matchedSubjet1_idx", "fj_matchedSubjets[0]")
             .Define("fj_matchedSubjet2_idx", "fj_matchedSubjets[1]")
@@ -361,7 +365,7 @@ void BuildData(
             .Define("ak15_nSubjetsPerEventTotal", "nAK15PuppiSubJet")
             .Define("ak15_goodSubjets", "MakeGoodSubjetMask(AK15PuppiSubJet_eta, AK15PuppiSubJet_phi, ak15_eta, ak15_phi, 1.5f, 0.f)")
             .Define("ak15_nSubjets", "ROOT::VecOps::Sum(ak15_goodSubjets)")
-            .Define("ak15_matchedSubjets", "MatchTwoJetsToHTauTau(AK15PuppiSubJet_eta, AK15PuppiSubJet_phi, ak15_goodSubjets, GenPart_eta, GenPart_phi, GenPart_pdgId, GenPart_genPartIdxMother, GenPart_statusFlags, 0.4f)")
+            .Define("ak15_matchedSubjets", "MatchTwoJetsToHTauTau(AK15PuppiSubJet_pt, AK15PuppiSubJet_eta, AK15PuppiSubJet_phi, ak15_goodSubjets, GenPart_eta, GenPart_phi, GenPart_pdgId, GenPart_genPartIdxMother, GenPart_statusFlags, 0.4f)")
 
             .Define("ak15_matchedSubjet1_idx", "ak15_matchedSubjets[0]")
             .Define("ak15_matchedSubjet2_idx", "ak15_matchedSubjets[1]")
@@ -400,55 +404,43 @@ void BuildData(
 
     std::string hadhad = require_hadhad ? "_hadhad" : "";
     
+    std::vector<ROOT::RDF::RResultHandle> snapshots;
+    ROOT::RDF::RSnapshotOptions opts;
+    opts.fLazy = true;
+
+
     if (include_RawData) {
         std::cout << "Skimming Raw Data... " <<std::endl;
         std::string out_dir = std::string(save_directory) + "/RawEventInfo" + hadhad + ".root";
-        df_raw_event_data.Snapshot(
-            "Events",
-            out_dir,
-            raw_data_dict
-        );
+        snapshots.push_back(df_raw_event_data.Snapshot("Events", out_dir, raw_data_dict, opts));
     }
 
     if (include_Tau) {
         std::cout << "Skimming Tau... " << std::endl;
         std::string out_dir = std::string(save_directory) + "/Tau" + hadhad + ".root";
-        df_Tau.Snapshot(
-            "Events",
-            out_dir,
-            tau_dict
-        );
+        snapshots.push_back(df_Tau.Snapshot("Events", out_dir, tau_dict, opts));
     }
 
     if (include_AK4) {
         std::cout << "Skimming AK4... " <<std::endl;
         std::string out_dir = std::string(save_directory) + "/Jet" + hadhad + ".root";
-        df_AK4.Snapshot(
-            "Events",
-            out_dir,
-            AK4_dict
-        );
+        snapshots.push_back(df_AK4.Snapshot("Events", out_dir, AK4_dict, opts));
     }
 
     if (include_AK8) {
         std::cout << "Skimming AK8" <<std::endl;
         std::string out_dir = std::string(save_directory) + "/fatJet" + hadhad + ".root";
-        df_AK8.Snapshot(
-            "Events",
-            out_dir,
-            AK8_dict
-        );
+        snapshots.push_back(df_AK8.Snapshot("Events", out_dir, AK8_dict, opts));
     }
 
     if (include_AK15) {
         std::cout << "Skimming AK15" <<std::endl;
         std::string out_dir = std::string(save_directory) + "/AK15" + hadhad + ".root";
-        df_AK15.Snapshot(
-            "Events",
-            out_dir,
-            AK15_dict
-        );
+        snapshots.push_back(df_AK15.Snapshot("Events", out_dir, AK15_dict, opts));
+    }
 
+    if (!snapshots.empty()) {
+        ROOT::RDF::RunGraphs(snapshots);
     }
     return;
 }
