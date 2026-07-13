@@ -44,8 +44,6 @@ _clean_subjet = (
     .replace("/", "over")
 )
 
-
-
 _ak4_str  = "Jet_"    if "AK4"  in REQUESTED_JETS else ""
 _ak8_str  = "FatJet_" if "AK8"  in REQUESTED_JETS else ""
 _ak15_str = "AK15_"   if "AK15" in REQUESTED_JETS else ""
@@ -136,7 +134,8 @@ rule jet_plots:
         EXPECTED_JET_PLOTS
 
 rule subjet_plots:
-    EXPECTED_SUBJET_PLOTS
+    input:
+        EXPECTED_SUBJET_PLOTS
 
 rule jet_effs:
     input:
@@ -177,11 +176,12 @@ rule run_subjet_effs:
         plot = "plots/{dataset}/SubjetMatchingEff_{cut_level}_vs_genHpt{suffix}.png"
     params:
         is_hadhad = lambda w: "true" if w.suffix == "_hadhad" else "false",
+        cut_level = lambda w: "true" if w.cut_level == "loose" else "false",
         cut_ak8   = lambda w: "fj_nMatchedSubjets >= 1" if w.cut_level == "loose" else "fj_nMatchedSubjets >= 2",
         cut_ak15  = lambda w: "ak15_nMatchedSubjets >= 1" if w.cut_level == "loose" else "ak15_nMatchedSubjets >= 2"
     shell:
         """
-        root -l -b -q 'PlotSubjetMatchingEffs.C("{output.plot}", "{input.raw}", "{input.ak8}", "{input.ak15}", "{params.cut_ak8}", "{params.cut_ak15}")'
+        root -l -b -q 'PlotSubjetMatchingEffs.C("{output.plot}", "{input.raw}", "{input.ak8}", "{input.ak15}", "{params.cut_ak8}", "{params.cut_ak15}", {params.cut_level})'
         """
 
 rule clustering_kinematics:     

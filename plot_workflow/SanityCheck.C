@@ -68,9 +68,9 @@ void SanityCheck(const char* file_hadhad = "/eos/user/m/mroine/NanoTuples/Htauta
         
         // Set specific Y-axis label based on the dataset
         if (hadhad) {
-            hs->GetYaxis()->SetTitle("FatJets (require hadhad)");
+            hs->GetYaxis()->SetTitle("FatJets (require hadhad) [A.u.]");
         } else {
-            hs->GetYaxis()->SetTitle("FatJets");
+            hs->GetYaxis()->SetTitle("FatJets [A.u.]");
         }
         hs->GetYaxis()->SetTitleOffset(1.6);
         if (padNum == 1) {

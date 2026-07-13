@@ -24,6 +24,7 @@ struct Channel {
 
 struct Jet {
     const char* label;
+    const char* prettyLabel;
     const char* file;
     const char* ptExpr;
     const char* jetVar;
@@ -66,9 +67,9 @@ void DecayChannelvEfficiency(
     };
 
     Jet jets[3] = {
-        {"Jet",  Form("%s/Jet.root",    jet_path), "ak4_pt/genH_pt",  "genH_pt", 30.0},
-        {"FatJet",  Form("%s/fatJet.root", jet_path), "fj_pt/genH_pt",   "genH_pt", 200.0},
-        {"AK15", Form("%s/AK15.root",   jet_path), "ak15_pt/genH_pt", "genH_pt", 150.0}
+        {"Jet", "Anti k_{T}, R = 0.4, p_{T} > 30 GeV, |#eta| < 2.5",  Form("%s/Jet.root",    jet_path), "ak4_pt/genH_pt",  "genH_pt", 30.0},
+        {"FatJet", "Anti k_{T}, R = 0.8, p_{T} > 200 GeV, |#eta| < 2.5", Form("%s/fatJet.root", jet_path), "fj_pt/genH_pt",   "genH_pt", 200.0},
+        {"AK15", "Anti k_{T}, R = 1.5, p_{T} > 150 GeV, |#eta| < 2.5", Form("%s/AK15.root",   jet_path), "ak15_pt/genH_pt", "genH_pt", 150.0}
     };
 
     TCanvas c("c_grid", "", 1600, 1000);
@@ -77,7 +78,10 @@ void DecayChannelvEfficiency(
 
     for (int j = 0; j < 3; ++j) {
         c.cd(j + 1);
-        gPad->SetTopMargin(0.14);
+        gPad->SetTopMargin(0.22);
+        gPad->SetBottomMargin(0.12);
+        gPad->SetLeftMargin(0.15);
+        gPad->SetRightMargin(0.05);
         
 
         TEfficiency* first = nullptr;
@@ -109,6 +113,10 @@ void DecayChannelvEfficiency(
             } else {
                 eff->Draw("P SAME");
             }
+            TLatex lab; lab.SetNDC();
+            lab.SetTextFont(42);
+            lab.SetTextSize(0.04);
+            lab.DrawLatex(0.16, 0.81, jets[j].prettyLabel);
         }
 
 
@@ -119,7 +127,10 @@ const double fitHi = 800.0;
 
 for (int j = 0; j < 3; ++j) {
     c.cd(j + 4);
-    gPad->SetTopMargin(0.14);
+    gPad->SetTopMargin(0.12); 
+    gPad->SetBottomMargin(0.12);
+    gPad->SetLeftMargin(0.15);
+    gPad->SetRightMargin(0.05);
 
     TProfile* profs[4] = {nullptr, nullptr, nullptr, nullptr};
     double Cfit[3], CfitErr[3], Nent[3], ffit[3];
@@ -150,22 +161,20 @@ for (int j = 0; j < 3; ++j) {
     }
     TLatex lab; lab.SetNDC(); lab.SetTextFont(42); lab.SetTextSize(0.055);
     if (j == 0) {
-        lab.DrawLatex(0.16, 0.95, "Jet");
+        lab.SetTextSize(0.04);
+        lab.DrawLatex(0.15, 0.94, jets[j].prettyLabel);
         continue;
     }
 
     
-
-    // ---- pass 1: free f AND free C on the 3 exclusive channels ----
     for (int ch = 0; ch < 3; ++ch) {
         TF1* f1 = MakeOffsetOverXFit(Form("p1_%d_%d", j, ch), 0.6, vMin, vMax, 60.0);
-        profs[ch]->Fit(f1, "RQ0N", "", fitLo, fitHi);   // N = don't draw/store
+        profs[ch]->Fit(f1, "RQ0N", "", fitLo, fitHi);   
         Cfit[ch]    = f1->GetParameter(1);
         CfitErr[ch] = f1->GetParError(1);
         Nent[ch]    = profs[ch]->GetEntries();
     }
 
-    // weighted shared C for this jet
     double sw = 0.0, swc = 0.0;
     for (int ch = 0; ch < 3; ++ch) {
         double e = (CfitErr[ch] > 0) ? CfitErr[ch] : 1e9;
@@ -174,7 +183,6 @@ for (int j = 0; j < 3; ++j) {
     }
     double Cshared = (sw > 0) ? swc / sw : 0.0;
 
-    // ---- pass 2: fix C = Cshared, free f, refit + draw ----
     TF1* fitLines[3] = {nullptr, nullptr, nullptr};
     for (int ch = 0; ch < 3; ++ch) {
         TF1* f2 = MakeOffsetOverXFit(Form("p2_%d_%d", j, ch), 0.6, vMin, vMax, Cshared);
@@ -208,8 +216,10 @@ for (int j = 0; j < 3; ++j) {
               << "  (pred 1.333)"
               << "  fAll_pred=" << fAllPred
               << std::endl;
-
-    lab.DrawLatex(0.16, 0.95, Form("%s (C = %f)", jets[j].label, Cshared));
+    lab.SetTextFont(42);
+    lab.SetTextSize(0.04);
+    lab.DrawLatex(0.14, 0.96, jets[j].prettyLabel);
+    lab.DrawLatex(0.14, 0.92, Form("C = %.1f", Cshared));
 
     TLegend* legFit = new TLegend(0.42, 0.58, 0.88, 0.88);
     legFit->SetBorderSize(0); legFit->SetFillStyle(0); legFit->SetTextSize(0.028);
@@ -230,10 +240,10 @@ for (int j = 0; j < 3; ++j) {
     latex.DrawLatex(0.11, 0.965, "Simulation, Work in Progress");
     latex.DrawLatex(0.05, 0.935, "H #rightarrow #tau#tau (125 GeV)");    
 
-    TLegend* globalLeg = new TLegend(0.68, 0.92, 0.99, 0.99);
+    TLegend* globalLeg = new TLegend(0.60, 0.95, 0.90, 0.99);
     globalLeg->SetBorderSize(0);
     globalLeg->SetFillStyle(0);
-    globalLeg->SetTextSize(0.025);
+    globalLeg->SetTextSize(0.027);
     globalLeg->SetNColumns(4); 
 
     for (int ch = 0; ch < 4; ++ch) {

@@ -121,14 +121,14 @@ void PlotDecayProdEnergyFractions(
     latex.SetTextFont(62);
     latex.SetTextSize(0.05);
     latex.DrawLatex(0.07, 0.91, "CMS");
-    latex.SetTextFont(52);
+    latex.SetTextFont(42);
     latex.SetTextSize(0.035);
     latex.DrawLatex(0.07, 0.86, "Simulation, Work in Progress");
     latex.SetTextFont(42);
     latex.SetTextSize(0.04);
     latex.DrawLatex(0.07, 0.8, "H #rightarrow #tau#tau (125 GeV)");
 
-    TLegend leg(0.65, 0.8, 0.99, 0.98);
+    TLegend leg(0.65, 0.8, 0.95, 0.98);
     leg.SetBorderSize(0);
     leg.SetNColumns(4);
     leg.SetFillStyle(0);

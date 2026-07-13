@@ -103,7 +103,8 @@ void BuildData(
         .Define("genTau_pt_asym_raw", "abs(genTau1_pt_raw - genTau2_pt_raw) / (genTau1_pt_raw + genTau2_pt_raw)")
         .Define("dR_fJ_nolim", "MatchJetSanityCheck(FatJet_eta, FatJet_phi, GenPart_eta, GenPart_phi, GenPart_pdgId, GenPart_genPartIdxMother, GenPart_statusFlags)")
         .Define("dR_Jet_nolim", "MatchJetSanityCheck(Jet_eta, Jet_phi, GenPart_eta, GenPart_phi, GenPart_pdgId, GenPart_genPartIdxMother, GenPart_statusFlags)")
-        .Define("dR_AK15_nolim", "MatchJetSanityCheck(AK15Puppi_eta, AK15Puppi_phi, GenPart_eta, GenPart_phi, GenPart_pdgId, GenPart_genPartIdxMother, GenPart_statusFlags)");
+        .Define("dR_AK15_nolim", "MatchJetSanityCheck(AK15Puppi_eta, AK15Puppi_phi, GenPart_eta, GenPart_phi, GenPart_pdgId, GenPart_genPartIdxMother, GenPart_statusFlags)")
+        .Define("dR_Tau_nolim", "MatchJetSanityCheck(Tau_eta, Tau_phi, GenPart_eta, GenPart_phi, GenPart_pdgId, GenPart_genPartIdxMother, GenPart_statusFlags)");
     }
 
     if (include_Tau) {

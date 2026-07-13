@@ -95,8 +95,8 @@ void Plots(bool AK4 = true, bool AK8 = true, bool AK15 = true,  bool Tau = true,
 
     TLegend* leg = new TLegend(0.50, 0.82, 0.98, 0.98); 
     leg->SetBorderSize(0);
+    leg->SetTextSize(0.030);
     leg->SetFillStyle(0);
-    leg->SetTextSize(0.035);
     leg->SetTextFont(42);
     leg->SetMargin(0.25); 
 
@@ -219,9 +219,9 @@ void Plots(bool AK4 = true, bool AK8 = true, bool AK15 = true,  bool Tau = true,
         hs->GetXaxis()->SetTitle(hist_title); 
 
         if (normalize) {
-            hs->GetYaxis()->SetTitle("Fraction of jets");
+            hs->GetYaxis()->SetTitle("A.u.");
         } else {
-            hs->GetYaxis()->SetTitle("# of jets");
+            hs->GetYaxis()->SetTitle("Number of jets");
         }
         hs->GetYaxis()->SetTitleOffset(2.5);
         
@@ -263,15 +263,15 @@ void Plots(bool AK4 = true, bool AK8 = true, bool AK15 = true,  bool Tau = true,
 
     latex.SetTextFont(62);
     latex.SetTextSize(0.05);
-    latex.DrawLatex(0.07, 0.93, "CMS");
+    latex.DrawLatex(0.05, 0.93, "CMS");
 
     latex.SetTextFont(52);
     latex.SetTextSize(0.035);
-    latex.DrawLatex(0.07, 0.88, "Simulation, Work in Progress");
+    latex.DrawLatex(0.05, 0.88, "Simulation, Work in Progress");
 
     latex.SetTextFont(42);
     latex.SetTextSize(0.04);
-    latex.DrawLatex(0.07, 0.83, "H #rightarrow #tau#tau (125 GeV)");
+    latex.DrawLatex(0.05, 0.83, "H #rightarrow #tau#tau (125 GeV)");
 
     c1->SaveAs(save_path);
 }

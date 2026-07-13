@@ -181,7 +181,7 @@ void PlotEffDiffs(
     );
 
 
-    const double s = 0.77;   // f_lep / f_had  (use 0.75 if you prefer 1/2 over 2/3)
+    const double s = 0.77;
 
     TEfficiency* eHadAK4  = BuildHadEff("ak4_had",  rawHad, gAK4_path_hadhad,  "genH_pt_raw", "genH_pt", nBins, vMin, vMax);
     TEfficiency* eHadAK8  = BuildHadEff("ak8_had",  rawHad, gAK8_path_hadhad,  "genH_pt_raw", "genH_pt", nBins, vMin, vMax);
@@ -213,14 +213,14 @@ void PlotEffDiffs(
     zero.SetLineStyle(2);
     zero.Draw("same");
 
-    TLegend leg(0.55, 0.70, 0.88, 0.88);
+    TLegend leg(0.55, 0.60, 0.83, 0.83);
     leg.SetBorderSize(0);
     leg.SetFillStyle(0);
-    leg.AddEntry(gAK4,  "AK4", "lp");
-    leg.AddEntry(gAK8,  "AK8", "lp");
-    leg.AddEntry(pAK8,  "AK8 pred", "l");
-    leg.AddEntry(gAK15, "AK15", "lp");
-    leg.AddEntry(pAK15, "AK15 pred", "l");
+    leg.AddEntry(gAK4,  "Anti k_{T}, R = 0.4, p_{T} > 30 GeV, |#eta| < 2.5", "lp");
+    leg.AddEntry(gAK8,  "Anti k_{T}, R = 0.8, p_{T} > 200 GeV, |#eta| < 2.5", "lp");
+    leg.AddEntry(pAK8,  "prediction", "l");
+    leg.AddEntry(gAK15, "Anti k_{T}, R = 1.5, p_{T} > 150 GeV, |#eta| < 2.5", "lp");
+    leg.AddEntry(pAK15, "prediction", "l");
     leg.Draw();
 
     TLatex latex;

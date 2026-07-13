@@ -292,6 +292,7 @@ const std::vector<std::string> raw_data_dict = {
     "dR_fJ_nolim",
     "dR_Jet_nolim",
     "dR_AK15_nolim",
+    "dR_Tau_nolim",
     "is_truth_ehad",
     "is_truth_muhad",
     "is_truth_hadhad",
