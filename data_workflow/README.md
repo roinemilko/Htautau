@@ -4,7 +4,7 @@ The purpose of this code is to reproducibly perform jet matching on AK4, AK8 and
 flowchart LR
 A[NanoAOD Data] --> B[Skimming and jet matching] 
 B-->C[AK4_channel.root]
-B-->D[AK8._channel.root]
+B-->D[fatJet_channel.root]
 B-->E[AK15_channel.root ]
 B-->F[Tau_channel.root]
 B-->G[RawEventData_channel.root]
@@ -14,7 +14,7 @@ The basic command to run the workflow is
 ```bash
 ./run.sh skim --cores "" --config # optional flags
 ```
-The workflow runs in [LCG 109](https://lcginfo.cern.ch/release/109/). In the cores flag indicate how many cores you want to use, and snakemake will automatically paralellize the process. The flags are as follows
+The workflow runs in [LCG 109](https://lcginfo.cern.ch/release/109/). In the cores flag indicate how many cores you want to use, and snakemake will automatically paralellize the process. By default each skimming process runs with 6 cores so for the full analysis run 12 or 24 cores is recommended. The flags are as follows
 <center>
 
 | Flag (set to preset value) | Usage |
