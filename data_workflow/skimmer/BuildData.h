@@ -148,8 +148,6 @@ const std::vector<std::string> AK8_dict = {
     "dR_fj_Subjet_tau2"
 };
 
-
-
 const std::vector<std::string> AK15_dict = {
     "target_mass",
     "matchedHiggsIdx",
@@ -219,6 +217,7 @@ const std::vector<std::string> AK15_dict = {
 };
 
 const std::vector<std::string> tau_dict = {
+    // note: gentruth
     "target_mass",
     "nMatchedGoodTau",
     "matchedTausIdx",
@@ -230,6 +229,7 @@ const std::vector<std::string> tau_dict = {
     "is_truth_ehad",
     "is_truth_muhad",
 
+    // note: genTruthh
     "genH_pt",
     "genH_eta",
     "genH_phi",
@@ -258,11 +258,42 @@ const std::vector<std::string> tau_dict = {
     "tau_decayMode",
     "tau_genPartFlav",
     "tau_genPartIdx",
+
+    // Deeptau
     "tau_idDeepTauVSjet",
     "tau_idDeepTauVSe",
     "tau_idDeepTauVSmu",
     "tau_rawDeepTauVSjet",
+    "tau_rawDeepTauVSe",  
+    "tau_rawDeepTauVSmu",
 
+    // ParticleNet 2023
+    "tau_decayModePNet",
+    "tau_probDM0PNet",
+    "tau_probDM1PNet",
+    "tau_probDM2PNet",
+    "tau_probDM10PNet",
+    "tau_probDM11PNet",
+    "tau_ptCorrPNet",
+    "tau_qConfPNet",
+    "tau_rawPNetVSe",
+    "tau_rawPNetVSjet",
+    "tau_rawPNetVSmu",
+
+    // ParT 2024
+    "tau_decayModeUParT",
+    "tau_probDM0UParT",
+    "tau_probDM1UParT",
+    "tau_probDM2UParT",
+    "tau_probDM10UParT",
+    "tau_probDM11UParT",
+    "tau_ptCorrUParT",
+    "tau_qConfUParT",
+    "tau_rawUParTVSe",
+    "tau_rawUParTVSjet",
+    "tau_rawUParTVSmu",
+
+    // note: Gentruth
     "dR_tau_tau1",
     "dR_tau_tau2",
     "dR_tau1_tau2",

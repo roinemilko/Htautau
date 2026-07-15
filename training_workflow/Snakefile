@@ -1,0 +1,121 @@
+import os
+import hashlib
+
+BG_DATA_DIRS = {
+    "TTto4Q": "/eos/user/m/mroine/NanoTuples/Htautau/data_workflow/background/POWHEG/TauBG_TTto4Q.root",
+    "TTtoLNu2Q": "/eos/user/m/mroine/NanoTuples/Htautau/data_workflow/background/POWHEG/TauBG_TTtoLNu2Q.root"
+}
+
+SIGNAL_DATA_DIRS = {
+    "TauHadHad": "/eos/user/m/mroine/NanoTuples/Htautau/data_workflow/jets/POWHEG/Tau_hadhad.root" 
+}
+
+config.setdefault("sig", "TauHadHad")
+config.setdefault("bg", "TTto4Q")
+config.setdefault("num_taus", 1)
+config.setdefault("seed", 100)
+config.setdefault("cms_label", "Work in Progress")
+config.setdefault("variables", [])
+
+try:
+    SIG_PATH = SIGNAL_DATA_DIRS[config["sig"]]
+    BG_PATH = BG_DATA_DIRS[config["bg"]]
+except KeyError as e:
+    raise ValueError(f"Dataset alias {e} not found in registries. Available signals: {list(SIGNAL_DATA_DIRS.keys())}, Available backgrounds: {list(BG_DATA_DIRS.keys())}")
+
+SIG_NAME = config["sig"]
+BG_NAME = config["bg"]
+NUM_TAUS = config["num_taus"]
+SEED = config["seed"]
+
+VAR_FLAG = ""
+if config["variables"]:
+    VAR_FLAG = f"--variables {' '.join(config['variables'])}"
+
+VAR_SUFFIX = ""
+if config["variables"]:
+    var_str = ",".join(sorted(config["variables"]))
+    var_hash = hashlib.md5(var_str.encode()).hexdigest()[:6]
+    VAR_SUFFIX = f"_vars{var_hash}"
+
+RUN_ID = f"{SIG_NAME}_vs_{BG_NAME}_{NUM_TAUS}taus_seed{SEED}{VAR_SUFFIX}"
+
+rule all:
+    input:
+        f"results/corr_sig_{SIG_NAME}_{NUM_TAUS}taus{VAR_SUFFIX}.png",
+        f"results/corr_bg_{BG_NAME}_{NUM_TAUS}taus{VAR_SUFFIX}.png",
+        f"results/bdt_{RUN_ID}.json",
+        f"results/roc_{RUN_ID}.png",
+        f"results/feat_{RUN_ID}.png",
+        f"results/conf_{RUN_ID}.png"
+
+rule plot_correlations:
+    input:
+        sig = SIG_PATH,
+        bg = BG_PATH
+    output:
+        sig_corr = f"results/corr_sig_{SIG_NAME}_{NUM_TAUS}taus{VAR_SUFFIX}.png",
+        bg_corr = f"results/corr_bg_{BG_NAME}_{NUM_TAUS}taus{VAR_SUFFIX}.png"
+    params:
+        num_taus = config["num_taus"],
+        cms_label = config["cms_label"],
+        var_flag = VAR_FLAG
+    shell:
+        """
+        python correlations.py \
+            --sig {input.sig} \
+            --bg {input.bg} \
+            --out_sig {output.sig_corr} \
+            --out_bg {output.bg_corr} \
+            --num_taus {params.num_taus} \
+            --cms-label "{params.cms_label}" \
+            {params.var_flag}
+        """
+
+rule train_bdt:
+    input:
+        sig = SIG_PATH,
+        bg = BG_PATH
+    output:
+        model = f"results/bdt_{RUN_ID}.json"
+    params:
+        num_taus = config["num_taus"],
+        seed = config["seed"],
+        var_flag = VAR_FLAG
+    shell:
+        """
+        python train_BDT.py \
+            --sig {input.sig} \
+            --bg {input.bg} \
+            --out_model {output.model} \
+            --num_taus {params.num_taus} \
+            --seed {params.seed} \
+            {params.var_flag}
+        """
+
+rule bdt_inference:
+    input:
+        sig = SIG_PATH,
+        bg = BG_PATH,
+        model = f"results/bdt_{RUN_ID}.json"
+    output:
+        roc = f"results/roc_{RUN_ID}.png",
+        feat = f"results/feat_{RUN_ID}.png",
+        conf = f"results/conf_{RUN_ID}.png"
+    params:
+        seed = config["seed"],
+        var_flag = VAR_FLAG,
+        num_taus = config["num_taus"]
+    shell:
+        """
+        python BDT_inference.py \
+            --sig {input.sig} \
+            --bg {input.bg} \
+            --model {input.model} \
+            --out_roc {output.roc} \
+            --out_feat {output.feat} \
+            --out_conf {output.conf} \
+            --seed {params.seed} \
+            --num_taus {params.num_taus} \
+            {params.var_flag}
+        """

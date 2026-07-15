@@ -41,20 +41,6 @@ void BuildData(
     ROOT::RDataFrame df("Events", file_pattern);
 
 
-    // Sometimes MET is missing so safeguard against that
-    ROOT::RDF::RNode df_safe = df;
-    std::vector<std::string> check_missing = {
-            "RawPFMET_pt", "RawPFMET_phi", "RawPFMET_sumEt", 
-            "PuppiMET_pt", "PuppiMET_phi", "PuppiMET_sumEt"
-    };
-
-    for (const auto& col : check_missing) {
-        if (!df_safe.HasColumn(col)) {
-            df_safe = df_safe.Define(col, []() { return kMissing; });
-            std::cout << col << " missing..." << ::std::endl;
-        }
-    }
-
     auto df_truth = df_safe
         .Define("tauFromH", "MakeIsHardProcLastCopyTauFromHiggsMask(GenPart_pdgId, GenPart_genPartIdxMother, GenPart_statusFlags)")
         .Define("muMask", "TauIsSemileptonicMuMask_Clean(GenPart_pdgId, GenPart_genPartIdxMother)")
@@ -134,6 +120,8 @@ void BuildData(
             .Define("tau_rawIso",      "ROOT::VecOps::RVec<float>{Tau_rawIso[TauMatch[0]],      Tau_rawIso[TauMatch[1]]}")
             .Define("tau_rawIsodR03",  "ROOT::VecOps::RVec<float>{Tau_rawIsodR03[TauMatch[0]],  Tau_rawIsodR03[TauMatch[1]]}")
             .Define("tau_puCorr",      "ROOT::VecOps::RVec<float>{Tau_puCorr[TauMatch[0]],      Tau_puCorr[TauMatch[1]]}")
+            .Define("tau_rawDeepTauVSe",  "ROOT::VecOps::RVec<float>{Tau_rawDeepTau2018v2p5VSe[TauMatch[0]],  Tau_rawDeepTau2018v2p5VSe[TauMatch[1]]}")
+            .Define("tau_rawDeepTauVSmu", "ROOT::VecOps::RVec<float>{Tau_rawDeepTau2018v2p5VSmu[TauMatch[0]], Tau_rawDeepTau2018v2p5VSmu[TauMatch[1]]}")
 
             .Define("tau_decayMode",    "ROOT::VecOps::RVec<int>{Tau_decayMode[TauMatch[0]],    Tau_decayMode[TauMatch[1]]}")
             .Define("tau_genPartFlav",  "ROOT::VecOps::RVec<int>{Tau_genPartFlav[TauMatch[0]],  Tau_genPartFlav[TauMatch[1]]}")
@@ -143,6 +131,34 @@ void BuildData(
             .Define("tau_idDeepTauVSe",   "ROOT::VecOps::RVec<int>{Tau_idDeepTau2018v2p5VSe[TauMatch[0]],   Tau_idDeepTau2018v2p5VSe[TauMatch[1]]}")
             .Define("tau_idDeepTauVSmu",  "ROOT::VecOps::RVec<int>{Tau_idDeepTau2018v2p5VSmu[TauMatch[0]],  Tau_idDeepTau2018v2p5VSmu[TauMatch[1]]}")
             .Define("tau_rawDeepTauVSjet","ROOT::VecOps::RVec<float>{Tau_rawDeepTau2018v2p5VSjet[TauMatch[0]], Tau_rawDeepTau2018v2p5VSjet[TauMatch[1]]}")
+
+            .Define("tau_decayModePNet", "ROOT::VecOps::RVec<int>{Tau_decayModePNet[TauMatch[0]], Tau_decayModePNet[TauMatch[1]]}")
+            .Define("tau_probDM0PNet",   "ROOT::VecOps::RVec<float>{Tau_probDM0PNet[TauMatch[0]], Tau_probDM0PNet[TauMatch[1]]}")
+            .Define("tau_probDM1PNet",   "ROOT::VecOps::RVec<float>{Tau_probDM1PNet[TauMatch[0]], Tau_probDM1PNet[TauMatch[1]]}")
+            .Define("tau_probDM2PNet",   "ROOT::VecOps::RVec<float>{Tau_probDM2PNet[TauMatch[0]], Tau_probDM2PNet[TauMatch[1]]}")
+            .Define("tau_probDM10PNet",  "ROOT::VecOps::RVec<float>{Tau_probDM10PNet[TauMatch[0]], Tau_probDM10PNet[TauMatch[1]]}")
+            .Define("tau_probDM11PNet",  "ROOT::VecOps::RVec<float>{Tau_probDM11PNet[TauMatch[0]], Tau_probDM11PNet[TauMatch[1]]}")
+            
+            .Define("tau_ptCorrPNet",    "ROOT::VecOps::RVec<float>{Tau_ptCorrPNet[TauMatch[0]], Tau_ptCorrPNet[TauMatch[1]]}")
+            .Define("tau_qConfPNet",     "ROOT::VecOps::RVec<float>{Tau_qConfPNet[TauMatch[0]], Tau_qConfPNet[TauMatch[1]]}")
+            
+            .Define("tau_rawPNetVSe",    "ROOT::VecOps::RVec<float>{Tau_rawPNetVSe[TauMatch[0]], Tau_rawPNetVSe[TauMatch[1]]}")
+            .Define("tau_rawPNetVSjet",  "ROOT::VecOps::RVec<float>{Tau_rawPNetVSjet[TauMatch[0]], Tau_rawPNetVSjet[TauMatch[1]]}")
+            .Define("tau_rawPNetVSmu",   "ROOT::VecOps::RVec<float>{Tau_rawPNetVSmu[TauMatch[0]], Tau_rawPNetVSmu[TauMatch[1]]}")
+
+            .Define("tau_decayModeUParT", "ROOT::VecOps::RVec<int>{Tau_decayModeUParT[TauMatch[0]], Tau_decayModeUParT[TauMatch[1]]}")
+            .Define("tau_probDM0UParT",   "ROOT::VecOps::RVec<float>{Tau_probDM0UParT[TauMatch[0]], Tau_probDM0UParT[TauMatch[1]]}")
+            .Define("tau_probDM1UParT",   "ROOT::VecOps::RVec<float>{Tau_probDM1UParT[TauMatch[0]], Tau_probDM1UParT[TauMatch[1]]}")
+            .Define("tau_probDM2UParT",   "ROOT::VecOps::RVec<float>{Tau_probDM2UParT[TauMatch[0]], Tau_probDM2UParT[TauMatch[1]]}")
+            .Define("tau_probDM10UParT",  "ROOT::VecOps::RVec<float>{Tau_probDM10UParT[TauMatch[0]], Tau_probDM10UParT[TauMatch[1]]}")
+            .Define("tau_probDM11UParT",  "ROOT::VecOps::RVec<float>{Tau_probDM11UParT[TauMatch[0]], Tau_probDM11UParT[TauMatch[1]]}")
+            
+            .Define("tau_ptCorrUParT",    "ROOT::VecOps::RVec<float>{Tau_ptCorrUParT[TauMatch[0]], Tau_ptCorrUParT[TauMatch[1]]}")
+            .Define("tau_qConfUParT",     "ROOT::VecOps::RVec<float>{Tau_qConfUParT[TauMatch[0]], Tau_qConfUParT[TauMatch[1]]}")
+            
+            .Define("tau_rawUParTVSe",    "ROOT::VecOps::RVec<float>{Tau_rawUParTVSe[TauMatch[0]], Tau_rawUParTVSe[TauMatch[1]]}")
+            .Define("tau_rawUParTVSjet",  "ROOT::VecOps::RVec<float>{Tau_rawUParTVSjet[TauMatch[0]], Tau_rawUParTVSjet[TauMatch[1]]}")
+            .Define("tau_rawUParTVSmu",   "ROOT::VecOps::RVec<float>{Tau_rawUParTVSmu[TauMatch[0]], Tau_rawUParTVSmu[TauMatch[1]]}")
 
             .Define("genH_pt",  "GenPart_pt[matchedHiggsIdx]")
             .Define("genH_eta", "GenPart_eta[matchedHiggsIdx]")

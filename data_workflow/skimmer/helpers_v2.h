@@ -470,4 +470,43 @@ inline ROOT::VecOps::RVec<float> MatchJetSanityCheck(
     return result;
 }
 
+// Chooses the two best Tau_rawPNetVSjet scores to choose background signal that looks like it came from taus.
+// Return {idx of highest score, idx of second highest score}
+// Needs at least two jets!
+inline ROOT::VecOps::RVec<int> GetHighestTauScorePair(
+    const ROOT::VecOps::RVec<float>& Tau_rawPNetVSjet,
+    const ROOT::VecOps::RVec<float>& Tau_pt
+) {
+    int best_idx = -1;
+    int second_best_idx = -1;
+    
+    float best_score = -9999.0f; 
+    float second_best_score = -9999.0f;
+
+    for (size_t i = 0; i < Tau_rawPNetVSjet.size(); i++) {
+        float current_score = Tau_rawPNetVSjet[i];
+        
+        if (current_score > best_score) {
+            second_best_score = best_score;
+            second_best_idx = best_idx;
+            
+            best_score = current_score;
+            best_idx = i;
+        } 
+        else if (current_score > second_best_score) {
+            second_best_score = current_score;
+            second_best_idx = i;
+        }
+    }
+    
+        if (best_idx != -1 && second_best_idx != -1) {
+            if (Tau_pt[second_best_idx] > Tau_pt[best_idx]) {
+                return {second_best_idx, best_idx};
+            }
+        }
+    
+    return {best_idx, second_best_idx};
+}
+
+
 #endif
