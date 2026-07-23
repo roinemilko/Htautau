@@ -405,6 +405,19 @@ inline ROOT::VecOps::RVec<int> MatchTwoJetsToHTauTau(
 }
 
 
+// Note: kMissing may cause type issues and not display as intended - e.g. UChar_T will underflow to 157!!
+template<typename T>
+inline ROOT::VecOps::RVec<T> FillMatchedSubjet(
+    const ROOT::VecOps::RVec<T>& subjet,
+    int idx1, int idx2
+) {
+    return {
+        static_cast<T>(idx1 >= 0 ? subjet[idx1] : kMissing),
+        static_cast<T>(idx2 >= 0 ? subjet[idx2] : kMissing)
+    };
+}
+
+
 // Selects the best jet and saves its dR to the furthest Gentruth tau in [0]; that is, min(max(dR(jet, tau1), dR(jet, tau2))). In rest of list save just max(dR(jet tau1), dR(jet, tau2)) of each jet.
 // Falls back to setting [0] to kMissing
 inline ROOT::VecOps::RVec<float> MatchJetSanityCheck(
@@ -471,7 +484,7 @@ inline ROOT::VecOps::RVec<float> MatchJetSanityCheck(
 }
 
 // Chooses the two best Tau_rawPNetVSjet scores to choose background signal that looks like it came from taus.
-// Return {idx of highest score, idx of second highest score}
+// Return {idx of highest score, idx of second highest score} sorted in p_T order to match signal
 // Needs at least two jets!
 inline ROOT::VecOps::RVec<int> GetHighestTauScorePair(
     const ROOT::VecOps::RVec<float>& Tau_rawPNetVSjet,
@@ -508,5 +521,19 @@ inline ROOT::VecOps::RVec<int> GetHighestTauScorePair(
     return {best_idx, second_best_idx};
 }
 
+
+// Chooses the best tautau_Score (defined accordingly in BuildBg.h) to choose background signal that looks like it came from taus.
+// Return highest score
+inline int GetHighestTauScore(
+    const ROOT::VecOps::RVec<float>& tautau_Score
+ ) {
+    int best_idx = 0;
+    for (size_t i = 1; i < tautau_Score.size(); i++) {
+        if (tautau_Score[i] > tautau_Score[best_idx]) {
+            best_idx = (int)i;
+        }
+    }
+    return best_idx;
+ }
 
 #endif

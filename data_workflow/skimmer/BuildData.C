@@ -41,7 +41,7 @@ void BuildData(
     ROOT::RDataFrame df("Events", file_pattern);
 
 
-    auto df_truth = df_safe
+    auto df_truth = df
         .Define("tauFromH", "MakeIsHardProcLastCopyTauFromHiggsMask(GenPart_pdgId, GenPart_genPartIdxMother, GenPart_statusFlags)")
         .Define("muMask", "TauIsSemileptonicMuMask_Clean(GenPart_pdgId, GenPart_genPartIdxMother)")
         .Define("eMask", "TauIsSemileptonicEMask_Clean(GenPart_pdgId, GenPart_genPartIdxMother)")
@@ -262,6 +262,7 @@ void BuildData(
             .Define("target_mass", "GenPart_mass[matchedHiggsIdx]")
             .Define("nTauMatchedGoodFatJet", "1")
             
+            // Standard Kinematics
             .Define("fj_pt", "FatJet_pt[matchedFatJetIdx]")
             .Define("fj_eta", "FatJet_eta[matchedFatJetIdx]")
             .Define("fj_phi", "FatJet_phi[matchedFatJetIdx]")
@@ -270,6 +271,7 @@ void BuildData(
             .Define("fj_rawFactor", "FatJet_rawFactor[matchedFatJetIdx]")
             .Define("fj_mass_rawFactorCorrected", "fj_mass * (1.f - fj_rawFactor)")
 
+            // Generator Matching
             .Define("genH_pt", "GenPart_pt[matchedHiggsIdx]")
             .Define("genH_eta", "GenPart_eta[matchedHiggsIdx]")
             .Define("genH_phi", "GenPart_phi[matchedHiggsIdx]")
@@ -280,20 +282,64 @@ void BuildData(
             .Define("genTau2_eta", "GenPart_eta[matchedTau2Idx]")
             .Define("genTau2_phi", "GenPart_phi[matchedTau2Idx]")
             .Define("genTau_pt_asym", "abs(genTau1_pt - genTau2_pt) / (genTau1_pt + genTau2_pt)")
-
-
-            .Define("dphi_fj_pfmet", "dphi(fj_phi, RawPFMET_phi)")
-            .Define("dphi_fj_puppimet", "dphi(fj_phi,  PuppiMET_phi)")
-            .Define("fj_pt_minus_pfmet_pt", "(fj_pt > kMissing && RawPFMET_pt > kMissing) ? fj_pt - RawPFMET_pt : kMissing")
-            .Define("fj_pt_minus_puppimet_pt", "(fj_pt > kMissing && PuppiMET_pt > kMissing) ? fj_pt - PuppiMET_pt : kMissing")
-            .Define("pfmet_over_fj_pt", "safeRatio(RawPFMET_pt, fj_pt)")
-            .Define("puppimet_over_fj_pt", "safeRatio(PuppiMET_pt, fj_pt)")
             .Define("dR_fj_tau1", "dR(fj_eta, fj_phi, genTau1_eta, genTau1_phi)")
             .Define("dR_fj_tau2", "dR(fj_eta, fj_phi, genTau2_eta, genTau2_phi)")
             .Define("dR_fj_H", "dR(fj_eta, fj_phi, genH_eta, genH_phi)")
             .Define("dR_tau1_tau2", "dR(genTau1_eta, genTau1_phi, genTau2_eta, genTau2_phi)")
 
 
+            // MET variables
+            .Define("dphi_fj_pfmet", "dphi(fj_phi, RawPFMET_phi)")
+            .Define("dphi_fj_puppimet", "dphi(fj_phi,  PuppiMET_phi)")
+            .Define("fj_pt_minus_pfmet_pt", "(fj_pt > kMissing && RawPFMET_pt > kMissing) ? fj_pt - RawPFMET_pt : kMissing")
+            .Define("fj_pt_minus_puppimet_pt", "(fj_pt > kMissing && PuppiMET_pt > kMissing) ? fj_pt - PuppiMET_pt : kMissing")
+            .Define("pfmet_over_fj_pt", "safeRatio(RawPFMET_pt, fj_pt)")
+            .Define("puppimet_over_fj_pt", "safeRatio(PuppiMET_pt, fj_pt)")
+        
+            // Extended FatJet Properties
+            .Define("fj_area", "FatJet_area[matchedFatJetIdx]")
+            .Define("fj_chEmEF", "FatJet_chEmEF[matchedFatJetIdx]")
+            .Define("fj_chHEF", "FatJet_chHEF[matchedFatJetIdx]")
+            .Define("fj_chMultiplicity", "FatJet_chMultiplicity[matchedFatJetIdx]")
+            .Define("fj_globalParT3_QCD", "FatJet_globalParT3_QCD[matchedFatJetIdx]")
+            .Define("fj_globalParT3_TopbWev", "FatJet_globalParT3_TopbWev[matchedFatJetIdx]")
+            .Define("fj_globalParT3_TopbWmv", "FatJet_globalParT3_TopbWmv[matchedFatJetIdx]")
+            .Define("fj_globalParT3_TopbWq", "FatJet_globalParT3_TopbWq[matchedFatJetIdx]")
+            .Define("fj_globalParT3_TopbWqq", "FatJet_globalParT3_TopbWqq[matchedFatJetIdx]")
+            .Define("fj_globalParT3_TopbWtauhv", "FatJet_globalParT3_TopbWtauhv[matchedFatJetIdx]")
+            .Define("fj_globalParT3_WvsQCD", "FatJet_globalParT3_WvsQCD[matchedFatJetIdx]")
+            .Define("fj_globalParT3_XWW3q", "FatJet_globalParT3_XWW3q[matchedFatJetIdx]")
+            .Define("fj_globalParT3_XWW4q", "FatJet_globalParT3_XWW4q[matchedFatJetIdx]")
+            .Define("fj_globalParT3_XWWqqev", "FatJet_globalParT3_XWWqqev[matchedFatJetIdx]")
+            .Define("fj_globalParT3_XWWqqmv", "FatJet_globalParT3_XWWqqmv[matchedFatJetIdx]")
+            .Define("fj_globalParT3_Xbb", "FatJet_globalParT3_Xbb[matchedFatJetIdx]")
+            .Define("fj_globalParT3_Xcc", "FatJet_globalParT3_Xcc[matchedFatJetIdx]")
+            .Define("fj_globalParT3_Xcs", "FatJet_globalParT3_Xcs[matchedFatJetIdx]")
+            .Define("fj_globalParT3_Xqq", "FatJet_globalParT3_Xqq[matchedFatJetIdx]")
+            .Define("fj_globalParT3_Xtauhtaue", "FatJet_globalParT3_Xtauhtaue[matchedFatJetIdx]")
+            .Define("fj_globalParT3_Xtauhtauh", "FatJet_globalParT3_Xtauhtauh[matchedFatJetIdx]")
+            .Define("fj_globalParT3_Xtauhtaum", "FatJet_globalParT3_Xtauhtaum[matchedFatJetIdx]")
+            .Define("fj_globalParT3_massCorrGeneric", "FatJet_globalParT3_massCorrGeneric[matchedFatJetIdx]")
+            .Define("fj_globalParT3_massCorrX2p", "FatJet_globalParT3_massCorrX2p[matchedFatJetIdx]")
+            .Define("fj_globalParT3_withMassTopvsQCD", "FatJet_globalParT3_withMassTopvsQCD[matchedFatJetIdx]")
+            .Define("fj_globalParT3_withMassWvsQCD", "FatJet_globalParT3_withMassWvsQCD[matchedFatJetIdx]")
+            .Define("fj_globalParT3_withMassZvsQCD", "FatJet_globalParT3_withMassZvsQCD[matchedFatJetIdx]")
+            .Define("fj_hadronFlavour", "FatJet_hadronFlavour[matchedFatJetIdx]")
+            .Define("fj_hfEmEF", "FatJet_hfEmEF[matchedFatJetIdx]")
+            .Define("fj_hfHEF", "FatJet_hfHEF[matchedFatJetIdx]")
+            .Define("fj_lsf3", "FatJet_lsf3[matchedFatJetIdx]")
+            .Define("fj_muEF", "FatJet_muEF[matchedFatJetIdx]")
+            .Define("fj_nConstituents", "FatJet_nConstituents[matchedFatJetIdx]")
+            .Define("fj_neEmEF", "FatJet_neEmEF[matchedFatJetIdx]")
+            .Define("fj_neHEF", "FatJet_neHEF[matchedFatJetIdx]")
+            .Define("fj_neMultiplicity", "FatJet_neMultiplicity[matchedFatJetIdx]")
+            .Define("fj_tau1", "FatJet_tau1[matchedFatJetIdx]")
+            .Define("fj_tau2", "FatJet_tau2[matchedFatJetIdx]")
+            .Define("fj_tau3", "FatJet_tau3[matchedFatJetIdx]")
+            .Define("fj_tau4", "FatJet_tau4[matchedFatJetIdx]")
+
+
+            // Subjets
             .Define("fj_nSubjetsPerEventTotal", "nSubJet")
             .Define("fj_goodSubjets", "MakeGoodSubjetMask(SubJet_eta, SubJet_phi, fj_eta, fj_phi, 0.8f, 0.f)")
             .Define("fj_nSubjets", "ROOT::VecOps::Sum(fj_goodSubjets)")
@@ -306,22 +352,41 @@ void BuildData(
             .Define("fj_nMatchedSubjets", "(int)(fj_matchedSubjet1_idx >= 0) + (int)(fj_matchedSubjet2_idx >= 0)")
             
 
-            .Define("fj_Subjet_mass", "FillMatchedSubjet(SubJet_mass, fj_matchedSubjet1_idx, fj_matchedSubjet2_idx)")
-
-            .Define("fj_Subjet_eta", "FillMatchedSubjet(SubJet_eta, fj_matchedSubjet1_idx, fj_matchedSubjet2_idx)")
-
-            .Define("fj_Subjet_phi", "FillMatchedSubjet(SubJet_phi, fj_matchedSubjet1_idx, fj_matchedSubjet2_idx)")
-
+            // Standard Kinematics
             .Define("fj_Subjet_pt", "FillMatchedSubjet(SubJet_pt, fj_matchedSubjet1_idx, fj_matchedSubjet2_idx)")
-
+            .Define("fj_Subjet_eta", "FillMatchedSubjet(SubJet_eta, fj_matchedSubjet1_idx, fj_matchedSubjet2_idx)")
+            .Define("fj_Subjet_phi", "FillMatchedSubjet(SubJet_phi, fj_matchedSubjet1_idx, fj_matchedSubjet2_idx)")
+            .Define("fj_Subjet_mass", "FillMatchedSubjet(SubJet_mass, fj_matchedSubjet1_idx, fj_matchedSubjet2_idx)")
             .Define("fj_Subjet_rawFactor", "FillMatchedSubjet(SubJet_rawFactor, fj_matchedSubjet1_idx, fj_matchedSubjet2_idx)")
+            .Define("fj_Subjet_pt_rawFactorCorrected", "FillMatchedSubjet((1 - SubJet_rawFactor) * SubJet_pt, fj_matchedSubjet1_idx, fj_matchedSubjet2_idx)")
 
-            .Define("fj_Subjet_pt_rawFactorCorrected", "FillMatchedSubjet((1.f - SubJet_rawFactor) * SubJet_pt, fj_matchedSubjet1_idx, fj_matchedSubjet2_idx)")
-            
+            // Corrections & Area
             .Define("fj_Subjet_area", "FillMatchedSubjet(SubJet_area, fj_matchedSubjet1_idx, fj_matchedSubjet2_idx)")
 
-            .Define("fj_Subjet_radius", "FillMatchedSubjet(sqrt(SubJet_area / 3.14159265), fj_matchedSubjet1_idx, fj_matchedSubjet2_idx)")
+            // Substructure & N-subjettiness
+            .Define("fj_Subjet_tau1", "FillMatchedSubjet(SubJet_tau1, fj_matchedSubjet1_idx, fj_matchedSubjet2_idx)")
+            .Define("fj_Subjet_tau2", "FillMatchedSubjet(SubJet_tau2, fj_matchedSubjet1_idx, fj_matchedSubjet2_idx)")
+            .Define("fj_Subjet_tau3", "FillMatchedSubjet(SubJet_tau3, fj_matchedSubjet1_idx, fj_matchedSubjet2_idx)")
+            .Define("fj_Subjet_tau4", "FillMatchedSubjet(SubJet_tau4, fj_matchedSubjet1_idx, fj_matchedSubjet2_idx)")
+            .Define("fj_Subjet_n2b1", "FillMatchedSubjet(SubJet_n2b1, fj_matchedSubjet1_idx, fj_matchedSubjet2_idx)")
+            .Define("fj_Subjet_n3b1", "FillMatchedSubjet(SubJet_n3b1, fj_matchedSubjet1_idx, fj_matchedSubjet2_idx)")
 
+            // B-Tagging & Flavour
+            .Define("fj_Subjet_btagDeepFlavB", "FillMatchedSubjet(SubJet_btagDeepFlavB, fj_matchedSubjet1_idx, fj_matchedSubjet2_idx)")
+            .Define("fj_Subjet_btagUParTAK4B", "FillMatchedSubjet(SubJet_btagUParTAK4B, fj_matchedSubjet1_idx, fj_matchedSubjet2_idx)")
+            .Define("fj_Subjet_hadronFlavour", "FillMatchedSubjet(SubJet_hadronFlavour, fj_matchedSubjet1_idx, fj_matchedSubjet2_idx)")
+            .Define("fj_Subjet_nBHadrons", "FillMatchedSubjet(SubJet_nBHadrons, fj_matchedSubjet1_idx, fj_matchedSubjet2_idx)")
+            .Define("fj_Subjet_nCHadrons", "FillMatchedSubjet(SubJet_nCHadrons, fj_matchedSubjet1_idx, fj_matchedSubjet2_idx)")
+
+            // UParT Regressions & Resolutions
+            .Define("fj_Subjet_UParTAK4RegPtRawCorr", "FillMatchedSubjet(SubJet_UParTAK4RegPtRawCorr, fj_matchedSubjet1_idx, fj_matchedSubjet2_idx)")
+            .Define("fj_Subjet_UParTAK4RegPtRawCorrNeutrino", "FillMatchedSubjet(SubJet_UParTAK4RegPtRawCorrNeutrino, fj_matchedSubjet1_idx, fj_matchedSubjet2_idx)")
+            .Define("fj_Subjet_UParTAK4RegPtRawRes", "FillMatchedSubjet(SubJet_UParTAK4RegPtRawRes, fj_matchedSubjet1_idx, fj_matchedSubjet2_idx)")
+            .Define("fj_Subjet_UParTAK4V1RegPtRawCorr", "FillMatchedSubjet(SubJet_UParTAK4V1RegPtRawCorr, fj_matchedSubjet1_idx, fj_matchedSubjet2_idx)")
+            .Define("fj_Subjet_UParTAK4V1RegPtRawCorrNeutrino", "FillMatchedSubjet(SubJet_UParTAK4V1RegPtRawCorrNeutrino, fj_matchedSubjet1_idx, fj_matchedSubjet2_idx)")
+            .Define("fj_Subjet_UParTAK4V1RegPtRawRes", "FillMatchedSubjet(SubJet_UParTAK4V1RegPtRawRes, fj_matchedSubjet1_idx, fj_matchedSubjet2_idx)")
+
+            // Generator sj variables
             .Define("dR_fj_Subjet_tau1",
                 "fj_matchedSubjet1_idx >= 0 ? "
                 "dR(fj_Subjet_eta[0], fj_Subjet_phi[0], "
@@ -348,6 +413,7 @@ void BuildData(
             .Define("target_mass", "GenPart_mass[matchedHiggsIdx]")
             .Define("nTauMatchedGoodAK15Jet", "1")
 
+            // Kinematics
             .Define("ak15_pt", "AK15Puppi_pt[matchedAK15JetIdx]")
             .Define("ak15_eta", "AK15Puppi_eta[matchedAK15JetIdx]") 
             .Define("ak15_phi", "AK15Puppi_phi[matchedAK15JetIdx]")
@@ -356,6 +422,7 @@ void BuildData(
             .Define("ak15_rawFactor", "AK15Puppi_rawFactor[matchedAK15JetIdx]")
             .Define("ak15_mass_rawFactorCorrected", "ak15_mass * (1.f - ak15_rawFactor)")
 
+            // Generator variables
             .Define("genH_pt", "GenPart_pt[matchedHiggsIdx]")
             .Define("genH_eta", "GenPart_eta[matchedHiggsIdx]")
             .Define("genH_phi", "GenPart_phi[matchedHiggsIdx]")
@@ -367,7 +434,7 @@ void BuildData(
             .Define("genTau2_phi", "GenPart_phi[matchedTau2Idx]")
             .Define("genTau_pt_asym", "abs(genTau1_pt - genTau2_pt) / (genTau1_pt + genTau2_pt)")
 
-
+            // MET and geometry
             .Define("dphi_ak15_pfmet", "dphi(ak15_phi, RawPFMET_phi)")
             .Define("dphi_ak15_puppimet", "dphi(ak15_phi,  PuppiMET_phi)")
             .Define("ak15_pt_minus_pfmet_pt", "(ak15_pt > kMissing && RawPFMET_pt > kMissing) ? ak15_pt - RawPFMET_pt : kMissing")
@@ -379,32 +446,76 @@ void BuildData(
             .Define("dR_ak15_H", "dR(ak15_eta, ak15_phi, genH_eta, genH_phi)")
             .Define("dR_tau1_tau2", "dR(genTau1_eta, genTau1_phi, genTau2_eta, genTau2_phi)")
 
+            // Flavour & Area
+            .Define("ak15_area", "AK15Puppi_area[matchedAK15JetIdx]")
+            .Define("ak15_nBHadrons", "AK15Puppi_nBHadrons[matchedAK15JetIdx]")
+            .Define("ak15_nCHadrons", "AK15Puppi_nCHadrons[matchedAK15JetIdx]")
+
+            // Substructure & N-subjettiness
+            .Define("ak15_tau1", "AK15Puppi_tau1[matchedAK15JetIdx]")
+            .Define("ak15_tau2", "AK15Puppi_tau2[matchedAK15JetIdx]")
+            .Define("ak15_tau3", "AK15Puppi_tau3[matchedAK15JetIdx]")
+
+            // ParTv3 Scores & Corrections
+            .Define("ak15_ParTv3_massCorrGeneric", "AK15Puppi_ParTv3_massCorrGeneric[matchedAK15JetIdx]")
+            .Define("ak15_ParTv3_massCorrResonance", "AK15Puppi_ParTv3_massCorrResonance[matchedAK15JetIdx]")
+            .Define("ak15_ParTv3_massCorrX2p", "AK15Puppi_ParTv3_massCorrX2p[matchedAK15JetIdx]")
+            .Define("ak15_ParTv3_probQCD", "AK15Puppi_ParTv3_probQCD[matchedAK15JetIdx]")
+            .Define("ak15_ParTv3_probTopbWev", "AK15Puppi_ParTv3_probTopbWev[matchedAK15JetIdx]")
+            .Define("ak15_ParTv3_probTopbWmv", "AK15Puppi_ParTv3_probTopbWmv[matchedAK15JetIdx]")
+            .Define("ak15_ParTv3_probTopbWq", "AK15Puppi_ParTv3_probTopbWq[matchedAK15JetIdx]")
+            .Define("ak15_ParTv3_probTopbWqq", "AK15Puppi_ParTv3_probTopbWqq[matchedAK15JetIdx]")
+            .Define("ak15_ParTv3_probTopbWtauhv", "AK15Puppi_ParTv3_probTopbWtauhv[matchedAK15JetIdx]")
+            .Define("ak15_ParTv3_probXWW3q", "AK15Puppi_ParTv3_probXWW3q[matchedAK15JetIdx]")
+            .Define("ak15_ParTv3_probXWW4q", "AK15Puppi_ParTv3_probXWW4q[matchedAK15JetIdx]")
+            .Define("ak15_ParTv3_probXWWqqev", "AK15Puppi_ParTv3_probXWWqqev[matchedAK15JetIdx]")
+            .Define("ak15_ParTv3_probXWWqqmv", "AK15Puppi_ParTv3_probXWWqqmv[matchedAK15JetIdx]")
+            .Define("ak15_ParTv3_probXbb", "AK15Puppi_ParTv3_probXbb[matchedAK15JetIdx]")
+            .Define("ak15_ParTv3_probXcc", "AK15Puppi_ParTv3_probXcc[matchedAK15JetIdx]")
+            .Define("ak15_ParTv3_probXcs", "AK15Puppi_ParTv3_probXcs[matchedAK15JetIdx]")
+            .Define("ak15_ParTv3_probXqq", "AK15Puppi_ParTv3_probXqq[matchedAK15JetIdx]")
+            .Define("ak15_ParTv3_probXtauhtaue", "AK15Puppi_ParTv3_probXtauhtaue[matchedAK15JetIdx]")
+            .Define("ak15_ParTv3_probXtauhtauh", "AK15Puppi_ParTv3_probXtauhtauh[matchedAK15JetIdx]")
+            .Define("ak15_ParTv3_probXtauhtaum", "AK15Puppi_ParTv3_probXtauhtaum[matchedAK15JetIdx]")
+
+            // ParticleNetMD Scores & Corrections
+            .Define("ak15_ParticleNetMD_mass", "AK15Puppi_ParticleNetMD_mass[matchedAK15JetIdx]")
+            .Define("ak15_ParticleNetMD_probQCDb", "AK15Puppi_ParticleNetMD_probQCDb[matchedAK15JetIdx]")
+            .Define("ak15_ParticleNetMD_probQCDbb", "AK15Puppi_ParticleNetMD_probQCDbb[matchedAK15JetIdx]")
+            .Define("ak15_ParticleNetMD_probQCDc", "AK15Puppi_ParticleNetMD_probQCDc[matchedAK15JetIdx]")
+            .Define("ak15_ParticleNetMD_probQCDcc", "AK15Puppi_ParticleNetMD_probQCDcc[matchedAK15JetIdx]")
+            .Define("ak15_ParticleNetMD_probQCDothers", "AK15Puppi_ParticleNetMD_probQCDothers[matchedAK15JetIdx]")
+            .Define("ak15_ParticleNetMD_probXbb", "AK15Puppi_ParticleNetMD_probXbb[matchedAK15JetIdx]")
+            .Define("ak15_ParticleNetMD_probXcc", "AK15Puppi_ParticleNetMD_probXcc[matchedAK15JetIdx]")
+            .Define("ak15_ParticleNetMD_probXqq", "AK15Puppi_ParticleNetMD_probXqq[matchedAK15JetIdx]")
+
+
+            // Subjets
             .Define("ak15_nSubjetsPerEventTotal", "nAK15PuppiSubJet")
             .Define("ak15_goodSubjets", "MakeGoodSubjetMask(AK15PuppiSubJet_eta, AK15PuppiSubJet_phi, ak15_eta, ak15_phi, 1.5f, 0.f)")
             .Define("ak15_nSubjets", "ROOT::VecOps::Sum(ak15_goodSubjets)")
             .Define("ak15_matchedSubjets", "MatchTwoJetsToHTauTau(AK15PuppiSubJet_pt, AK15PuppiSubJet_eta, AK15PuppiSubJet_phi, ak15_goodSubjets, GenPart_eta, GenPart_phi, GenPart_pdgId, GenPart_genPartIdxMother, GenPart_statusFlags, 0.4f)")
-
             .Define("ak15_matchedSubjet1_idx", "ak15_matchedSubjets[0]")
             .Define("ak15_matchedSubjet2_idx", "ak15_matchedSubjets[1]")
             .Define("ak15_matchedSubjet1_tauIdx", "ak15_matchedSubjets[2]")
             .Define("ak15_matchedSubjet2_tauIdx", "ak15_matchedSubjets[3]")
             .Define("ak15_nMatchedSubjets", "(int)(ak15_matchedSubjet1_idx >= 0) + (int)(ak15_matchedSubjet2_idx >= 0)")
 
+            // Kinematic variables
             .Define("ak15_Subjet_mass", "FillMatchedSubjet(AK15PuppiSubJet_mass, ak15_matchedSubjet1_idx, ak15_matchedSubjet2_idx)")
-
             .Define("ak15_Subjet_eta", "FillMatchedSubjet(AK15PuppiSubJet_eta, ak15_matchedSubjet1_idx, ak15_matchedSubjet2_idx)")
-
             .Define("ak15_Subjet_phi", "FillMatchedSubjet(AK15PuppiSubJet_phi, ak15_matchedSubjet1_idx, ak15_matchedSubjet2_idx)")
-
             .Define("ak15_Subjet_pt", "FillMatchedSubjet(AK15PuppiSubJet_pt, ak15_matchedSubjet1_idx, ak15_matchedSubjet2_idx)")
-
             .Define("ak15_Subjet_rawFactor", "FillMatchedSubjet(AK15PuppiSubJet_rawFactor, ak15_matchedSubjet1_idx, ak15_matchedSubjet2_idx)")
-
             .Define("ak15_Subjet_pt_rawFactorCorrected", "FillMatchedSubjet((1 - AK15PuppiSubJet_rawFactor) * AK15PuppiSubJet_pt, ak15_matchedSubjet1_idx, ak15_matchedSubjet2_idx)")
 
+            // Area
             .Define("ak15_Subjet_area", "FillMatchedSubjet(AK15PuppiSubJet_area, ak15_matchedSubjet1_idx, ak15_matchedSubjet2_idx)")
-
             .Define("ak15_Subjet_radius", "FillMatchedSubjet(sqrt(AK15PuppiSubJet_area / 3.14159265), ak15_matchedSubjet1_idx, ak15_matchedSubjet2_idx)")
+
+            // Flavours
+            .Define("ak15_Subjet_nBHadrons", "FillMatchedSubjet(AK15PuppiSubJet_nBHadrons, ak15_matchedSubjet1_idx, ak15_matchedSubjet2_idx)")
+            .Define("ak15_Subjet_nCHadrons", "FillMatchedSubjet(AK15PuppiSubJet_nCHadrons, ak15_matchedSubjet1_idx, ak15_matchedSubjet2_idx)")
 
             .Define("dR_ak15_Subjet_tau1",
                 "ak15_matchedSubjet1_idx >= 0 ? "

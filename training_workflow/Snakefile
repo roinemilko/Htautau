@@ -3,7 +3,9 @@ import hashlib
 
 BG_DATA_DIRS = {
     "TTto4Q": "/eos/user/m/mroine/NanoTuples/Htautau/data_workflow/background/POWHEG/TauBG_TTto4Q.root",
-    "TTtoLNu2Q": "/eos/user/m/mroine/NanoTuples/Htautau/data_workflow/background/POWHEG/TauBG_TTtoLNu2Q.root"
+    "TTtoLNu2Q": "/eos/user/m/mroine/NanoTuples/Htautau/data_workflow/background/POWHEG/TauBG_TTtoLNu2Q.root",
+    "TTto2L2Nu": "/eos/user/m/mroine/NanoTuples/Htautau/data_workflow/background/POWHEG/TauBG_TTto2L2Nu.root",
+    "DYto2Tau": "/eos/user/m/mroine/NanoTuples/Htautau/data_workflow/background/POWHEG/TauBG_DYto2Tau.root"
 }
 
 SIGNAL_DATA_DIRS = {

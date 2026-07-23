@@ -7,19 +7,22 @@ from tqdm import tqdm
 import hashlib
 
 def load_tau_data(file_path, label, num_taus=1, force_rebuild = False,
-    variables = [
-        "tau_pt", "tau_eta", "tau_phi", "tau_mass", "tau_charge",
-        "tau_dxy", "tau_dz", "tau_ipLengthSig",
-        "tau_chargedIso", "tau_neutralIso", "tau_rawIso", "tau_rawIsodR03", "tau_puCorr",
-        "tau_rawDeepTauVSjet", "tau_rawDeepTauVSe", "tau_rawDeepTauVSmu",
-        "tau_decayModePNet", "tau_probDM0PNet", "tau_probDM1PNet", "tau_probDM2PNet",
-        "tau_probDM10PNet", "tau_probDM11PNet", "tau_ptCorrPNet", "tau_qConfPNet",
-        "tau_rawPNetVSe", "tau_rawPNetVSjet", "tau_rawPNetVSmu",
-        "tau_decayModeUParT", "tau_probDM0UParT", "tau_probDM1UParT", "tau_probDM2UParT",
-        "tau_probDM10UParT", "tau_probDM11UParT", "tau_ptCorrUParT", "tau_qConfUParT",
-        "tau_rawUParTVSe", "tau_rawUParTVSjet", "tau_rawUParTVSmu"
-    ]
+    variables = None
 ):
+
+    if variables == None:
+        variables = [
+            "tau_pt", "tau_eta", "tau_phi", "tau_mass", "tau_charge",
+            "tau_dxy", "tau_dz", "tau_ipLengthSig",
+            "tau_chargedIso", "tau_neutralIso", "tau_rawIso", "tau_rawIsodR03", "tau_puCorr",
+            "tau_rawDeepTauVSjet", "tau_rawDeepTauVSe", "tau_rawDeepTauVSmu",
+            "tau_decayModePNet", "tau_probDM0PNet", "tau_probDM1PNet", "tau_probDM2PNet",
+            "tau_probDM10PNet", "tau_probDM11PNet", "tau_ptCorrPNet", "tau_qConfPNet",
+            "tau_rawPNetVSe", "tau_rawPNetVSjet", "tau_rawPNetVSmu",
+            "tau_decayModeUParT", "tau_probDM0UParT", "tau_probDM1UParT", "tau_probDM2UParT",
+            "tau_probDM10UParT", "tau_probDM11UParT", "tau_ptCorrUParT", "tau_qConfUParT",
+            "tau_rawUParTVSe", "tau_rawUParTVSjet", "tau_rawUParTVSmu"
+        ]
 
     base_name = os.path.basename(file_path).replace('.root', '')
 

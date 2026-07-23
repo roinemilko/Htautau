@@ -18,17 +18,6 @@
 
 constexpr Float_t kMissing = -998.f;
 
-template<typename T>
-inline ROOT::VecOps::RVec<T> FillMatchedSubjet(
-    const ROOT::VecOps::RVec<T>&    subjet,
-    int idx1, int idx2
-) {
-    return {
-        idx1 >= 0 ? subjet[idx1] : kMissing,
-        idx2 >= 0 ? subjet[idx2] : kMissing
-    };
-}
-
 const std::vector<std::string> AK4_dict = {
     "target_mass",
     "matchedHiggsIdx",
@@ -81,6 +70,7 @@ const std::vector<std::string> AK4_dict = {
 };
 
 const std::vector<std::string> AK8_dict = {
+    // Event info
     "target_mass",
     "matchedHiggsIdx",
     "matchedTau1Idx",
@@ -92,16 +82,23 @@ const std::vector<std::string> AK8_dict = {
     "is_truth_ehad",
     "is_truth_muhad",
     "is_truth_hadhad",
-    "genH_pt",
-    "genH_eta",
-    "genH_phi",
     "PV_npvsGood",
     "Pileup_nTrueInt",
     "PV_npvs",
+    
+    // Generator
+    "genH_pt",
+    "genH_eta",
+    "genH_phi",
     "genTau1_pt",
+    "genTau1_eta",
+    "genTau1_phi",
     "genTau2_pt",
+    "genTau2_eta",
+    "genTau2_phi",
+    "genTau_pt_asym",
 
-
+    // Kinematics + matching
     "matchedFatJetIdx",
     "nTauMatchedGoodFatJet",
     "fj_pt",
@@ -112,19 +109,51 @@ const std::vector<std::string> AK8_dict = {
     "fj_rawFactor",
     "fj_mass_rawFactorCorrected",
 
-    "dphi_fj_pfmet",
-    "dphi_fj_puppimet",
-    "fj_pt_minus_pfmet_pt",
-    "fj_pt_minus_puppimet_pt",
-    "pfmet_over_fj_pt",
-    "puppimet_over_fj_pt",
+    // more properties
+    "fj_area",
+    "fj_chEmEF",
+    "fj_chHEF",
+    "fj_chMultiplicity",
+    "fj_hadronFlavour",
+    "fj_hfEmEF",
+    "fj_hfHEF",
+    "fj_lsf3",
+    "fj_muEF",
+    "fj_nConstituents",
+    "fj_neEmEF",
+    "fj_neHEF",
+    "fj_neMultiplicity",
+    "fj_tau1",
+    "fj_tau2",
+    "fj_tau3",
+    "fj_tau4",
 
-    "dR_fj_tau1",
-    "dR_fj_tau2",
-    "dR_fj_H",
-    "dR_tau1_tau2",
-    "genTau_pt_asym",
+    // GlobalParT3
+    "fj_globalParT3_QCD",
+    "fj_globalParT3_TopbWev",
+    "fj_globalParT3_TopbWmv",
+    "fj_globalParT3_TopbWq",
+    "fj_globalParT3_TopbWqq",
+    "fj_globalParT3_TopbWtauhv",
+    "fj_globalParT3_WvsQCD",
+    "fj_globalParT3_XWW3q",
+    "fj_globalParT3_XWW4q",
+    "fj_globalParT3_XWWqqev",
+    "fj_globalParT3_XWWqqmv",
+    "fj_globalParT3_Xbb",
+    "fj_globalParT3_Xcc",
+    "fj_globalParT3_Xcs",
+    "fj_globalParT3_Xqq",
+    "fj_globalParT3_Xtauhtaue",
+    "fj_globalParT3_Xtauhtauh",
+    "fj_globalParT3_Xtauhtaum",
+    "fj_globalParT3_massCorrGeneric",
+    "fj_globalParT3_massCorrX2p",
+    "fj_globalParT3_withMassTopvsQCD",
+    "fj_globalParT3_withMassWvsQCD",
+    "fj_globalParT3_withMassZvsQCD",
 
+    // MET & dR
     "RawPFMET_pt",
     "RawPFMET_phi",
     "PuppiMET_significance",
@@ -132,10 +161,23 @@ const std::vector<std::string> AK8_dict = {
     "PuppiMET_sumPtUnclustered",
     "PuppiMET_pt",
     "PuppiMET_phi",
+    "dphi_fj_pfmet",
+    "dphi_fj_puppimet",
+    "fj_pt_minus_pfmet_pt",
+    "fj_pt_minus_puppimet_pt",
+    "pfmet_over_fj_pt",
+    "puppimet_over_fj_pt",
+    "dR_fj_tau1",
+    "dR_fj_tau2",
+    "dR_fj_H",
+    "dR_tau1_tau2",
 
+    // Subjets
     "fj_nSubjetsPerEventTotal",
     "fj_nSubjets",
     "fj_nMatchedSubjets",
+
+    // kinematics
     "fj_Subjet_mass",
     "fj_Subjet_eta",
     "fj_Subjet_phi",
@@ -143,12 +185,35 @@ const std::vector<std::string> AK8_dict = {
     "fj_Subjet_rawFactor",
     "fj_Subjet_pt_rawFactorCorrected",
     "fj_Subjet_area",
-    "fj_Subjet_radius",
+
+    // more properties
+    "fj_Subjet_tau1",
+    "fj_Subjet_tau2",
+    "fj_Subjet_tau3",
+    "fj_Subjet_tau4",
+    "fj_Subjet_n2b1",
+    "fj_Subjet_n3b1",
+    "fj_Subjet_btagDeepFlavB",
+    "fj_Subjet_btagUParTAK4B",
+    "fj_Subjet_hadronFlavour",
+    "fj_Subjet_nBHadrons",
+    "fj_Subjet_nCHadrons",
+
+    // ParT
+    "fj_Subjet_UParTAK4RegPtRawCorr",
+    "fj_Subjet_UParTAK4RegPtRawCorrNeutrino",
+    "fj_Subjet_UParTAK4RegPtRawRes",
+    "fj_Subjet_UParTAK4V1RegPtRawCorr",
+    "fj_Subjet_UParTAK4V1RegPtRawCorrNeutrino",
+    "fj_Subjet_UParTAK4V1RegPtRawRes",
+
+    // gen dRtau
     "dR_fj_Subjet_tau1",
     "dR_fj_Subjet_tau2"
 };
 
 const std::vector<std::string> AK15_dict = {
+    // event info
     "target_mass",
     "matchedHiggsIdx",
     "matchedTau1Idx",
@@ -160,16 +225,23 @@ const std::vector<std::string> AK15_dict = {
     "is_truth_ehad",
     "is_truth_muhad",
     "is_truth_hadhad",
-    "genH_pt",
-    "genH_eta",
-    "genH_phi",
     "PV_npvsGood",
     "Pileup_nTrueInt",
     "PV_npvs",
+    
+    // gen info
+    "genH_pt",
+    "genH_eta",
+    "genH_phi",
     "genTau1_pt",
+    "genTau1_eta",
+    "genTau1_phi",
     "genTau2_pt",
+    "genTau2_eta",
+    "genTau2_phi",
+    "genTau_pt_asym",
 
-
+    // kinematics
     "matchedAK15JetIdx",
     "nTauMatchedGoodAK15Jet",
     "ak15_pt",
@@ -180,19 +252,48 @@ const std::vector<std::string> AK15_dict = {
     "ak15_rawFactor",
     "ak15_mass_rawFactorCorrected",
 
-    "dphi_ak15_pfmet",
-    "dphi_ak15_puppimet",
-    "ak15_pt_minus_pfmet_pt",
-    "ak15_pt_minus_puppimet_pt",
-    "pfmet_over_ak15_pt",
-    "puppimet_over_ak15_pt",
+    // more propetries
+    "ak15_area",
+    "ak15_nBHadrons",
+    "ak15_nCHadrons",
+    "ak15_tau1",
+    "ak15_tau2",
+    "ak15_tau3",
 
-    "dR_ak15_tau1",
-    "dR_ak15_tau2",
-    "dR_ak15_H",
-    "dR_tau1_tau2",
-    "genTau_pt_asym",
+    // ParTv3
+    "ak15_ParTv3_massCorrGeneric",
+    "ak15_ParTv3_massCorrResonance",
+    "ak15_ParTv3_massCorrX2p",
+    "ak15_ParTv3_probQCD",
+    "ak15_ParTv3_probTopbWev",
+    "ak15_ParTv3_probTopbWmv",
+    "ak15_ParTv3_probTopbWq",
+    "ak15_ParTv3_probTopbWqq",
+    "ak15_ParTv3_probTopbWtauhv",
+    "ak15_ParTv3_probXWW3q",
+    "ak15_ParTv3_probXWW4q",
+    "ak15_ParTv3_probXWWqqev",
+    "ak15_ParTv3_probXWWqqmv",
+    "ak15_ParTv3_probXbb",
+    "ak15_ParTv3_probXcc",
+    "ak15_ParTv3_probXcs",
+    "ak15_ParTv3_probXqq",
+    "ak15_ParTv3_probXtauhtaue",
+    "ak15_ParTv3_probXtauhtauh",
+    "ak15_ParTv3_probXtauhtaum",
 
+    // ParticleNetMD
+    "ak15_ParticleNetMD_mass",
+    "ak15_ParticleNetMD_probQCDb",
+    "ak15_ParticleNetMD_probQCDbb",
+    "ak15_ParticleNetMD_probQCDc",
+    "ak15_ParticleNetMD_probQCDcc",
+    "ak15_ParticleNetMD_probQCDothers",
+    "ak15_ParticleNetMD_probXbb",
+    "ak15_ParticleNetMD_probXcc",
+    "ak15_ParticleNetMD_probXqq",
+
+    // MET & dR
     "RawPFMET_pt",
     "RawPFMET_phi",
     "PuppiMET_significance",
@@ -200,7 +301,18 @@ const std::vector<std::string> AK15_dict = {
     "PuppiMET_sumPtUnclustered",
     "PuppiMET_pt",
     "PuppiMET_phi",
+    "dphi_ak15_pfmet",
+    "dphi_ak15_puppimet",
+    "ak15_pt_minus_pfmet_pt",
+    "ak15_pt_minus_puppimet_pt",
+    "pfmet_over_ak15_pt",
+    "puppimet_over_ak15_pt",
+    "dR_ak15_tau1",
+    "dR_ak15_tau2",
+    "dR_ak15_H",
+    "dR_tau1_tau2",
 
+    // subjets
     "ak15_nSubjetsPerEventTotal",
     "ak15_nSubjets",
     "ak15_nMatchedSubjets",
@@ -211,7 +323,10 @@ const std::vector<std::string> AK15_dict = {
     "ak15_Subjet_rawFactor",
     "ak15_Subjet_pt_rawFactorCorrected",
     "ak15_Subjet_area",
-    "ak15_Subjet_radius",
+
+    // flavour & dR
+    "ak15_Subjet_nBHadrons",
+    "ak15_Subjet_nCHadrons",
     "dR_ak15_Subjet_tau1",
     "dR_ak15_Subjet_tau2"
 };

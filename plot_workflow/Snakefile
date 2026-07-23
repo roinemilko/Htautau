@@ -3,7 +3,14 @@ DATA_MAP = {
     "MADGRAPH": "/eos/user/m/mroine/NanoTuples/Htautau/data_workflow/jets/MADGRAPH"
 }
 
+BG_MAP = {
+    "POWHEG": "/eos/user/m/mroine/NanoTuples/Htautau/data_workflow/background/POWHEG"
+}
+
 FILES = ["Jet", "FatJet", "AK15", "Tau", "RawEventInfo"]
+BG_FILES = ["TauBG"]
+BG_CHANNELS = ["TTto4Q", "TTto2L2Nu", "TTtoLNu2Q", "DYto2Tau-2Jets"]
+
 _HADHAD = "_hadhad"
 
 _use_data_str = config.get("data", "MADGRAPH, POWHEG") 
@@ -11,7 +18,9 @@ _channel_mode = config.get("channel", "both")
 
 _excluded_str   = config.get("exclude", "")
 JET_PARAMS      = config.get("jet-params", "X_mass, X_pt, X_mass/X_pt, abs(X_eta)")
-SUBJET_PARAMS   = config.get("subjet-params", "X_Subjet_mass, X_Subjet_pt, X_Subjet_mass/X_Subjet_pt, abs(X_Subjet_eta)") 
+SUBJET_PARAMS   = config.get("subjet-params", "X_Subjet_mass, X_Subjet_pt, X_Subjet_mass/X_Subjet_pt, abs(X_Subjet_eta)")
+
+BG_CHANNEL      = config.get("bg-channel", "")
 
 EXCLUDED_JETS = [x.strip() for x in _excluded_str.split(",")] if _excluded_str else []
 NORMALIZE     = config.get("normalize", "true")
@@ -21,6 +30,13 @@ JET_NAMES = {
     "AK8": "fatJet",
     "AK15": "AK15",
     "Tau": "Tau"
+}
+
+BG_NAMES = {
+    "AK4", "JetBG",
+    "AK8", "fatJetBG",
+    "AK15", "AK15BG",
+    "Tau", "TauBG"
 }
 
 REQUESTED_JETS = [j for j in JET_NAMES.keys() if j not in EXCLUDED_JETS]
@@ -44,6 +60,9 @@ _clean_subjet = (
     .replace("/", "over")
 )
 
+def get_bg_suffix(dataset):
+    return f"_{BG_CHANNEL}" if (dataset in BG_MAP and BG_CHANNEL != "") else ""
+
 _ak4_str  = "Jet_"    if "AK4"  in REQUESTED_JETS else ""
 _ak8_str  = "FatJet_" if "AK8"  in REQUESTED_JETS else ""
 _ak15_str = "AK15_"   if "AK15" in REQUESTED_JETS else ""
@@ -61,10 +80,11 @@ CUT_LEVELS = ["loose", "tight"]
 
 wildcard_constraints:
     suffix = "_hadhad|",
-    cut_level = "loose|tight"
+    cut_level = "loose|tight",
+    bgsuffix = f"_{BG_CHANNEL}|" if BG_CHANNEL != "" else ""
 
 EXPECTED_JET_PLOTS = [
-    f"plots/{dataset}/{_ak4_str}{_ak8_str}{_ak15_str}{_tau_str}{_clean_jet}{suffix}_plot.png"
+    f"plots/{dataset}/{_ak4_str}{_ak8_str}{_ak15_str}{_tau_str}{_clean_jet}{suffix}{get_bg_suffix(dataset)}_plot.png"
     for dataset in DATA
     for suffix in SUFFIXES
 ]
@@ -264,7 +284,7 @@ rule run_jet_plot:
     input:
         lambda w: [f"{DATA_MAP[w.dataset]}/{JET_NAMES[j]}{w.suffix}.root" for j in REQUESTED_JETS]
     output:
-        f"plots/{{dataset}}/{_ak4_str}{_ak8_str}{_ak15_str}{_tau_str}{_clean_jet}{{suffix}}_plot.png"
+        f"plots/{{dataset}}/{_ak4_str}{_ak8_str}{_ak15_str}{_tau_str}{_clean_jet}{{suffix}}{{bgsuffix}}_plot.png"
     params:
         ak4 = "true" if "AK4" in REQUESTED_JETS else "false",
         ak8 = "true" if "AK8" in REQUESTED_JETS else "false",
@@ -273,10 +293,12 @@ rule run_jet_plot:
         plot_params = JET_PARAMS,
         normalize = NORMALIZE,
         hadhad = lambda w: "true" if w.suffix == "_hadhad" else "false",
-        jet_path = lambda w: DATA_MAP[w.dataset]
+        jet_path = lambda w: DATA_MAP[w.dataset],
+        bg_path = lambda w: f"{BG_MAP[w.dataset]}" if (w.dataset in BG_MAP and BG_CHANNEL != "") else "",
+        bg_chan = BG_CHANNEL if BG_CHANNEL in BG_CHANNELS else ""
     shell:
         """
-        root -l -b -q 'Plots.C({params.ak4}, {params.ak8}, {params.ak15}, {params.tau}, "{params.plot_params}", "{output}", {params.normalize}, {params.hadhad}, "{params.jet_path}")'
+        root -l -b -q 'Plots.C({params.ak4}, {params.ak8}, {params.ak15}, {params.tau}, "{params.bg_path}", "{params.bg_chan}", "{params.plot_params}", "{output}", {params.normalize}, {params.hadhad}, "{params.jet_path}")'
         """
 
 rule run_subjet_plot:
@@ -290,8 +312,10 @@ rule run_subjet_plot:
         plot_params = SUBJET_PARAMS,
         normalize = NORMALIZE,
         hadhad = lambda w: "true" if w.suffix == "_hadhad" else "false",
-        jet_path = lambda w: DATA_MAP[w.dataset]
+        jet_path = lambda w: DATA_MAP[w.dataset],
+        bg_path = lambda w: f"{BG_MAP[w.dataset]}" if (w.dataset in BG_MAP and BG_CHANNEL != "") else "",
+        bg_chan = BG_CHANNEL if BG_CHANNEL in BG_CHANNELS else ""
     shell:
         """
-        root -l -b -q 'Plots.C(false, {params.ak8}, {params.ak15}, false, "{params.plot_params}", "{output}", {params.normalize}, {params.hadhad}, "{params.jet_path}")'
+        root -l -b -q 'Plots.C(false, {params.ak8}, {params.ak15}, false, "{params.bg_path}", "{params.bg_chan}", "{params.plot_params}", "{output}", {params.normalize}, {params.hadhad}, "{params.jet_path}")'
         """
