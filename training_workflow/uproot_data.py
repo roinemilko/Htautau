@@ -21,15 +21,16 @@ def load_tau_data(file_path, label, num_taus=1, force_rebuild = False,
             "tau_rawPNetVSe", "tau_rawPNetVSjet", "tau_rawPNetVSmu",
             "tau_decayModeUParT", "tau_probDM0UParT", "tau_probDM1UParT", "tau_probDM2UParT",
             "tau_probDM10UParT", "tau_probDM11UParT", "tau_ptCorrUParT", "tau_qConfUParT",
-            "tau_rawUParTVSe", "tau_rawUParTVSjet", "tau_rawUParTVSmu"
+            "tau_rawUParTVSe", "tau_rawUParTVSjet", "tau_rawUParTVSmu", "event"
         ]
 
+    variables = sorted(variables)
     base_name = os.path.basename(file_path).replace('.root', '')
-
-    config_string = f"{label}_{num_taus}_{','.join(variables)}"
+    parent_dir = os.path.basename(os.path.dirname(file_path))
+    config_string = f"{file_path}_{label}_{num_taus}_{','.join(variables)}"
     config_hash = hashlib.md5(config_string.encode('utf-8')).hexdigest()[:8]
+    cache_file = f"data_cache/{parent_dir}_{base_name}_cache_{num_taus}_{config_hash}.parquet"
 
-    cache_file = f"data_cache/{base_name}_cache_{num_taus}taus_{config_hash}.parquet"
 
 
     if not force_rebuild and os.path.exists(cache_file):
@@ -47,7 +48,14 @@ def load_tau_data(file_path, label, num_taus=1, force_rebuild = False,
     if num_taus == 1:
         out_vars = variables
     elif num_taus == 2:
-        out_vars = [f"{var}_1" for var in variables] + [f"{var}_2" for var in variables]
+        out_vars = []
+        for var in variables:
+            if var == "event":
+                out_vars.append("event")
+            elif var == "genH_pt":
+                out_vars.append("genH_pt")
+            else:
+                out_vars.extend([f"{var}_1", f"{var}_2"])
     else:
         raise ValueError("num_taus has to be 1 or 2!")
 
@@ -63,9 +71,14 @@ def load_tau_data(file_path, label, num_taus=1, force_rebuild = False,
     
     for arrays in tqdm(iterator, total=total_chunks, desc=f"Reading {base_name}", unit="chunk"):
         for var in variables:
+            if var == "event":
+                accumulated_data["event"].append(np.ravel(ak.to_numpy(arrays[var])))
+                continue
+            if var == "genH_pt":
+                accumulated_data["genH_pt"].append(np.ravel(ak.to_numpy(arrays[var])))
+                continue
             if num_taus == 1:
                 accumulated_data[var].append(np.ravel(ak.to_numpy(arrays[var][:, 0])))
-                
             elif num_taus == 2:
                 accumulated_data[f"{var}_1"].append(np.ravel(ak.to_numpy(arrays[var][:, 0])))
                 accumulated_data[f"{var}_2"].append(np.ravel(ak.to_numpy(arrays[var][:, 1])))

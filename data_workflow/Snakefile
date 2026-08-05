@@ -5,12 +5,21 @@ DATA_DIRS = {
     "POWHEG":   "/eos/cms/store/group/phys_higgs/ttHcc/NanoAOD/NanoTuples/2024/mc/GluGluH-HTo2Tau_Par-M-125_TuneCP5_13p6TeV_powheg-pythia8/NanoTuples-uParTv3-parTlepID-NanoAODv15_RunIII2024Summer24MiniAODv6-150X_v2-v2/260608_185433/0000"
 }
 
+BG_DATA_DIRS = {
+    "DYto2Tau": "/eos/user/m/mroine/NanoTuples/Htautau/data_workflow/bg_data/DYto2Tau",
+    "TTto2L2Nu": "/eos/user/m/mroine/NanoTuples/Htautau/data_workflow/bg_data/TTto2L2Nu",
+    "TTto4Q": "/eos/user/m/mroine/NanoTuples/Htautau/data_workflow/bg_data/TTto4Q",
+    "TTtoLNu2Q": "/eos/user/m/mroine/NanoTuples/Htautau/data_workflow/bg_data/TTtoLNu2Q"
+}
+
 _use_data_str = config.get("data", "MADGRAPH, POWHEG") 
 _channel_mode = config.get("channel", "both")
 _excluded_str = config.get("exclude", "")
+_bg_channel_str = config.get("bg-channels", "DYto2Tau, TTto2L2Nu, TTto4Q, TTtoLNu2Q")
 
 DATA = [x.strip() for x in _use_data_str.split(",")]
 EXCLUDED_JETS = [x.strip() for x in _excluded_str.split(",")] if _excluded_str else []
+
 
 
 SUFFIXES = []
@@ -27,8 +36,15 @@ JET_NAMES = {
     "Tau": "Tau"
 }
 
-REQUESTED_JETS = [j for j in JET_NAMES.keys() if j not in EXCLUDED_JETS]
+BG_NAMES = {
+    "AK8": "fatJetBG",
+    "AK15": "AK15BG",
+    "Tau": "TauBG"
+}
 
+REQUESTED_JETS = [j for j in JET_NAMES.keys() if j not in EXCLUDED_JETS]
+REQUESTED_BGS = [x.strip() for x in _bg_channel_str.split(",")] if _bg_channel_str else [""]
+VALID_BGS = [bg for bg in REQUESTED_BGS if bg]
 
 EXPECTED_SKIMS = [
     f"jets/{dataset}/RawEventInfo{suffix}.root"
@@ -41,14 +57,37 @@ EXPECTED_SKIMS = [
     for j in REQUESTED_JETS
 ]
 
-wildcard_constraints:
-    dataset = "|".join(DATA_DIRS.keys()),
-    suffix  = "_hadhad|"
+EXPECTED_BG_SKIMS = [
+    f"background/{bg}/{BG_NAMES[j]}_{bg}.root"
+    for bg in VALID_BGS
+    for j in REQUESTED_JETS if j in BG_NAMES
+]
 
+def get_bg_suffix(dataset, bg_channel):
+    return f"_{bg_channel}" if (dataset in BG_DATA_DIRS and bg_channel != "") else ""
+
+valid_bg_suffixes = [f"_{bg}" for bg in VALID_BGS]
+bgsuffix_constraint = "|".join(valid_bg_suffixes) + "|" if valid_bg_suffixes else ".*"
+
+wildcard_constraints:
+    dataset  = "|".join(DATA_DIRS.keys()),
+    bg       = "|".join(BG_DATA_DIRS.keys()) if BG_DATA_DIRS else ".*",
+    suffix   = "_hadhad|",
+    bgsuffix = bgsuffix_constraint
+
+
+rule all:
+    input:
+        EXPECTED_SKIMS,
+        EXPECTED_BG_SKIMS
 
 rule skim:
     input:
         EXPECTED_SKIMS
+
+rule skim_bg:
+    input:
+        EXPECTED_BG_SKIMS
 
 rule skim_run:
     input:
@@ -72,6 +111,26 @@ rule skim_run:
         root -l -b -q -e 'gSystem->Load("{input.so}"); BuildData("{params.pattern}", {params.inc_ak4}, {params.inc_ak8}, {params.inc_ak15}, true, {params.inc_tau}, {params.hadhad}, "{params.out_path}", {threads});'
         """
 
+rule skim_bg_run:
+    input:
+        in_files = lambda w: glob.glob(f"{BG_DATA_DIRS[w.bg]}/*.root"),
+        so = "skimmer/BuildBg_C.so"
+    output:
+        jets = [f"background/{{bg}}/{BG_NAMES[j]}_{{bg}}.root" for j in REQUESTED_JETS if j in BG_NAMES]
+    threads: 6
+    params:
+        pattern = lambda w: f"{BG_DATA_DIRS[w.bg]}/*.root",
+        out_path= "background/{bg}",
+        identifyer = lambda w: f"_{w.bg}",
+
+        inc_ak8  = "true" if "AK8" in REQUESTED_JETS else "false",
+        inc_ak15 = "true" if "AK15" in REQUESTED_JETS else "false",
+        inc_tau  = "true" if "Tau" in REQUESTED_JETS else "false"
+    shell:
+        """
+        root -l -b -q -e 'gSystem->Load("{input.so}"); BuildBg("{params.pattern}", "{params.out_path}", "{params.identifyer}", {params.inc_tau}, {params.inc_ak8}, {params.inc_ak15}, {threads});'
+        """
+
 rule compile:
     input:
         "skimmer/BuildData.C"
@@ -80,4 +139,14 @@ rule compile:
     shell:
         """
         root -l -b -q -e 'int status = gSystem->CompileMacro(\"skimmer/BuildData.C\", \"kf\"); gSystem->Exit(status == 1 ? 0 : 1);'
+        """
+
+rule compile_bg:
+    input:
+        "skimmer/BuildBg.C"
+    output:
+        "skimmer/BuildBg_C.so"
+    shell:
+        """
+        root -l -b -q -e 'int status = gSystem->CompileMacro(\"skimmer/BuildBg.C\", \"kf\"); gSystem->Exit(status == 1 ? 0 : 1);'
         """

@@ -14,6 +14,7 @@
 #define AK15_eta_max 2.5f
 
 const std::vector<std::string> TauBG_dict = {
+    "event",
     "tau_pt",
     "tau_eta",
     "tau_phi",
@@ -68,6 +69,7 @@ const std::vector<std::string> TauBG_dict = {
 };
 
 const std::vector<std::string> AK8BG_dict = {
+    "event",
     // kinematics
     "fj_pt",
     "fj_eta",
@@ -75,20 +77,24 @@ const std::vector<std::string> AK8BG_dict = {
     "fj_mass",
     "fj_msoftdrop",
     "fj_rawFactor",
-
-    // more properties
     "fj_area",
+
+    // energy fractions
     "fj_chEmEF",
     "fj_chHEF",
-    "fj_chMultiplicity",
-    "fj_hadronFlavour",
     "fj_hfEmEF",
     "fj_hfHEF",
-    "fj_lsf3",
-    "fj_muEF",
-    "fj_nConstituents",
     "fj_neEmEF",
     "fj_neHEF",
+    "fj_muEF",
+
+    // gentruth flavour
+    "fj_hadronFlavour",
+
+
+    "fj_lsf3",
+    "fj_nConstituents",
+    "fj_chMultiplicity",
     "fj_neMultiplicity",
     "fj_tau1",
     "fj_tau2",
@@ -143,6 +149,8 @@ const std::vector<std::string> AK8BG_dict = {
     // B-Tagging & Flavour
     "fj_Subjet_btagDeepFlavB",
     "fj_Subjet_btagUParTAK4B",
+
+    //MC TRUTH
     "fj_Subjet_hadronFlavour",
     "fj_Subjet_nBHadrons",
     "fj_Subjet_nCHadrons",
@@ -157,6 +165,7 @@ const std::vector<std::string> AK8BG_dict = {
 };
 
 const std::vector<std::string> AK15BG_dict = {
+    "event",
     // kinematics 
     "ak15_pt",
     "ak15_eta",
@@ -166,7 +175,7 @@ const std::vector<std::string> AK15BG_dict = {
     "ak15_rawFactor",
     "ak15_area",
 
-    // flavour
+    // flavour (mc truth!)
     "ak15_nBHadrons",
     "ak15_nCHadrons",
 
@@ -179,6 +188,7 @@ const std::vector<std::string> AK15BG_dict = {
     "ak15_ParTv3_massCorrGeneric",
     "ak15_ParTv3_massCorrResonance",
     "ak15_ParTv3_massCorrX2p",
+    
     "ak15_ParTv3_probQCD",
     "ak15_ParTv3_probTopbWev",
     "ak15_ParTv3_probTopbWmv",
@@ -220,7 +230,7 @@ const std::vector<std::string> AK15BG_dict = {
     "ak15_Subjet_pt_rawFactorCorrected",
     "ak15_Subjet_area",
 
-    // flavour
+    // flavour MC TRUTH
     "ak15_Subjet_nBHadrons",
     "ak15_Subjet_nCHadrons"
 };

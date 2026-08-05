@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import mplhep as hep
 from uproot_data import load_tau_data
+from uproot_fat import load_fatjet_data
 
 
 def plot_corr_heatmap(df, title, out_path, cms_label="Work in progress"):
@@ -70,14 +71,26 @@ def main():
         choices=["Preliminary", "Simulation", "Work in Progress", "Private Work"],
     )
     parser.add_argument("--variables", nargs='+', default=None, help="List of variables to load")
+
+    parser.add_argument("--mode", default="tau", choices=["Tau", "AK8", "AK15"], help="Object type to process")
+    parser.add_argument("--use_subjets", action="store_true", help="Require 2 subjets and load subjet features (AK8/AK15 only)")
     args = parser.parse_args()
     
-    if args.variables:
-        df_sig = load_tau_data(args.sig, label=1, num_taus=args.num_taus, variables=args.variables)
-        df_bg  = load_tau_data(args.bg, label=0, num_taus=args.num_taus, variables=args.variables)
-    else:
-        df_sig = load_tau_data(args.sig, label=1, num_taus=args.num_taus)
-        df_bg  = load_tau_data(args.bg, label=0, num_taus=args.num_taus)
+    if args.mode == "Tau":
+        if args.variables:
+            df_sig = load_tau_data(args.sig, label=1, num_taus=args.num_taus, variables=args.variables)
+            df_bg  = load_tau_data(args.bg, label=0, num_taus=args.num_taus, variables=args.variables)
+        else:
+            df_sig = load_tau_data(args.sig, label=1, num_taus=args.num_taus)
+            df_bg  = load_tau_data(args.bg, label=0, num_taus=args.num_taus)
+
+    if args.mode == "AK8" or args.mode == "AK15":
+        if args.variables:
+            df_sig = load_fatjet_data(args.sig, label=1, variables=args.variables, jet_type=args.mode, use_subjets=args.use_subjets)
+            df_bg  = load_fatjet_data(args.bg, label=0, variables=args.variables, jet_type=args.mode, use_subjets=args.use_subjets)
+        else:
+            df_sig = load_fatjet_data(args.sig, label=1, jet_type=args.mode, use_subjets=args.use_subjets)
+            df_bg  = load_fatjet_data(args.bg, label=0, jet_type=args.mode, use_subjets=args.use_subjets)
 
     plot_corr_heatmap(df_sig, "", args.out_sig, args.cms_label)
     plot_corr_heatmap(df_bg, "", args.out_bg, args.cms_label)

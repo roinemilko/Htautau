@@ -19,6 +19,7 @@
 constexpr Float_t kMissing = -998.f;
 
 const std::vector<std::string> AK4_dict = {
+    "event",
     "target_mass",
     "matchedHiggsIdx",
     "matchedTau1Idx",
@@ -71,6 +72,7 @@ const std::vector<std::string> AK4_dict = {
 
 const std::vector<std::string> AK8_dict = {
     // Event info
+    "event",
     "target_mass",
     "matchedHiggsIdx",
     "matchedTau1Idx",
@@ -214,6 +216,7 @@ const std::vector<std::string> AK8_dict = {
 
 const std::vector<std::string> AK15_dict = {
     // event info
+    "event",
     "target_mass",
     "matchedHiggsIdx",
     "matchedTau1Idx",
@@ -333,6 +336,7 @@ const std::vector<std::string> AK15_dict = {
 
 const std::vector<std::string> tau_dict = {
     // note: gentruth
+    "event",
     "target_mass",
     "nMatchedGoodTau",
     "matchedTausIdx",
@@ -420,6 +424,7 @@ const std::vector<std::string> tau_dict = {
 };
 
 const std::vector<std::string> raw_data_dict = {
+    "event",
     "RawPFMET_pt",
     "RawPFMET_phi",   
     "PuppiMET_pt",

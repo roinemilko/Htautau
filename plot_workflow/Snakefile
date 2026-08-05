@@ -3,24 +3,31 @@ DATA_MAP = {
     "MADGRAPH": "/eos/user/m/mroine/NanoTuples/Htautau/data_workflow/jets/MADGRAPH"
 }
 
+BG_BASE = "/eos/user/m/mroine/NanoTuples/Htautau/data_workflow/background"
 BG_MAP = {
-    "POWHEG": "/eos/user/m/mroine/NanoTuples/Htautau/data_workflow/background/POWHEG"
+    "TTto4Q":    f"{BG_BASE}/TTto4Q",
+    "TTto2L2Nu": f"{BG_BASE}/TTto2L2Nu",
+    "TTtoLNu2Q": f"{BG_BASE}/TTtoLNu2Q",
+    "DYto2Tau":  f"{BG_BASE}/DYto2Tau",
 }
 
 FILES = ["Jet", "FatJet", "AK15", "Tau", "RawEventInfo"]
 BG_FILES = ["TauBG"]
-BG_CHANNELS = ["TTto4Q", "TTto2L2Nu", "TTtoLNu2Q", "DYto2Tau-2Jets"]
+BG_CHANNELS = ["TTto4Q", "TTto2L2Nu", "TTtoLNu2Q", "DYto2Tau"]
 
 _HADHAD = "_hadhad"
 
 _use_data_str = config.get("data", "MADGRAPH, POWHEG") 
 _channel_mode = config.get("channel", "both")
-
+ 
 _excluded_str   = config.get("exclude", "")
-JET_PARAMS      = config.get("jet-params", "X_mass, X_pt, X_mass/X_pt, abs(X_eta)")
-SUBJET_PARAMS   = config.get("subjet-params", "X_Subjet_mass, X_Subjet_pt, X_Subjet_mass/X_Subjet_pt, abs(X_Subjet_eta)")
+JET_PARAMS      = config.get("jet-params", "XX_mass, XX_pt, XX_mass/XX_pt, abs(XX_eta)")
+SUBJET_PARAMS   = config.get("subjet-params", "XX_Subjet_mass, XX_Subjet_pt, XX_Subjet_mass/XX_Subjet_pt, abs(XX_Subjet_eta)")
 
-BG_CHANNEL      = config.get("bg-channel", "")
+_bg_channel_str = config.get("bg-channel", "")
+REQUESTED_BGS = [x.strip() for x in _bg_channel_str.split(",")] if _bg_channel_str else [""]
+
+
 
 EXCLUDED_JETS = [x.strip() for x in _excluded_str.split(",")] if _excluded_str else []
 NORMALIZE     = config.get("normalize", "true")
@@ -33,10 +40,10 @@ JET_NAMES = {
 }
 
 BG_NAMES = {
-    "AK4", "JetBG",
-    "AK8", "fatJetBG",
-    "AK15", "AK15BG",
-    "Tau", "TauBG"
+    "AK4": "JetBG",
+    "AK8": "fatJetBG",
+    "AK15": "AK15BG",
+    "Tau": "TauBG"
 }
 
 REQUESTED_JETS = [j for j in JET_NAMES.keys() if j not in EXCLUDED_JETS]
@@ -44,7 +51,7 @@ REQUESTED_SUBJETS = [j for j in REQUESTED_JETS if j in ["AK8", "AK15"]]
 
 _clean_jet = (
     JET_PARAMS
-    .replace("X", "")
+    .replace("XX", "")
     .replace("_", "")
     .replace(" ", "")
     .replace(",", "_")
@@ -53,15 +60,14 @@ _clean_jet = (
 
 _clean_subjet = (
     SUBJET_PARAMS
-    .replace("X", "")
+    .replace("XX", "")
     .replace("_", "")
     .replace(" ", "")
     .replace(",", "_")
     .replace("/", "over")
 )
-
-def get_bg_suffix(dataset):
-    return f"_{BG_CHANNEL}" if (dataset in BG_MAP and BG_CHANNEL != "") else ""
+def get_bg_suffix(dataset, bg_channel):
+    return f"_{bg_channel}" if bg_channel in BG_MAP else ""
 
 _ak4_str  = "Jet_"    if "AK4"  in REQUESTED_JETS else ""
 _ak8_str  = "FatJet_" if "AK8"  in REQUESTED_JETS else ""
@@ -78,15 +84,19 @@ if _channel_mode in ["both", "hadhad_only"]:
 
 CUT_LEVELS = ["loose", "tight"]
 
+valid_bg_suffixes = [f"_{bg}" for bg in REQUESTED_BGS if bg != ""]
+bgsuffix_constraint = "|".join(valid_bg_suffixes) + "|" if valid_bg_suffixes else ".*"
+
 wildcard_constraints:
     suffix = "_hadhad|",
     cut_level = "loose|tight",
-    bgsuffix = f"_{BG_CHANNEL}|" if BG_CHANNEL != "" else ""
+    bgsuffix = bgsuffix_constraint
 
 EXPECTED_JET_PLOTS = [
-    f"plots/{dataset}/{_ak4_str}{_ak8_str}{_ak15_str}{_tau_str}{_clean_jet}{suffix}{get_bg_suffix(dataset)}_plot.png"
+    f"plots/{dataset}/{_ak4_str}{_ak8_str}{_ak15_str}{_tau_str}{_clean_jet}{suffix}{get_bg_suffix(dataset, bg)}_plot.png"
     for dataset in DATA
     for suffix in SUFFIXES
+    for bg in REQUESTED_BGS
 ]
 
 EXPECTED_JET_EFF_PLOTS = [
@@ -132,10 +142,12 @@ EXPECTED_CHANNEL_EFF_PLOTS = [
 ]
 
 EXPECTED_SUBJET_PLOTS = [
-    f"plots/{dataset}/{_ak8_str}{_ak15_str}{_clean_subjet}{suffix}_plot.png"
+    f"plots/{dataset}/{_ak8_str}{_ak15_str}{_clean_subjet}{suffix}{get_bg_suffix(dataset, bg)}_plot.png"
     for dataset in DATA
     for suffix in SUFFIXES
+    for bg in REQUESTED_BGS
 ] if REQUESTED_SUBJETS else []
+
 
 rule all:
     input:
@@ -294,8 +306,8 @@ rule run_jet_plot:
         normalize = NORMALIZE,
         hadhad = lambda w: "true" if w.suffix == "_hadhad" else "false",
         jet_path = lambda w: DATA_MAP[w.dataset],
-        bg_path = lambda w: f"{BG_MAP[w.dataset]}" if (w.dataset in BG_MAP and BG_CHANNEL != "") else "",
-        bg_chan = BG_CHANNEL if BG_CHANNEL in BG_CHANNELS else ""
+        bg_path = lambda w: BG_MAP.get(w.bgsuffix.lstrip("_"), ""),
+        bg_chan = lambda w: w.bgsuffix.lstrip("_") if w.bgsuffix.lstrip("_") in BG_MAP else ""
     shell:
         """
         root -l -b -q 'Plots.C({params.ak4}, {params.ak8}, {params.ak15}, {params.tau}, "{params.bg_path}", "{params.bg_chan}", "{params.plot_params}", "{output}", {params.normalize}, {params.hadhad}, "{params.jet_path}")'
@@ -305,7 +317,7 @@ rule run_subjet_plot:
     input:
         lambda w: [f"{DATA_MAP[w.dataset]}/{JET_NAMES[j]}{w.suffix}.root" for j in REQUESTED_JETS]
     output:
-        f"plots/{{dataset}}/{_ak8_str}{_ak15_str}{_clean_subjet}{{suffix}}_plot.png"
+        f"plots/{{dataset}}/{_ak8_str}{_ak15_str}{_clean_subjet}{{suffix}}{{bgsuffix}}_plot.png"
     params:
         ak8 = "true" if "AK8" in REQUESTED_JETS else "false",
         ak15 = "true" if "AK15" in REQUESTED_JETS else "false",
@@ -313,8 +325,8 @@ rule run_subjet_plot:
         normalize = NORMALIZE,
         hadhad = lambda w: "true" if w.suffix == "_hadhad" else "false",
         jet_path = lambda w: DATA_MAP[w.dataset],
-        bg_path = lambda w: f"{BG_MAP[w.dataset]}" if (w.dataset in BG_MAP and BG_CHANNEL != "") else "",
-        bg_chan = BG_CHANNEL if BG_CHANNEL in BG_CHANNELS else ""
+        bg_path = lambda w: BG_MAP.get(w.bgsuffix.lstrip("_"), ""),
+        bg_chan = lambda w: w.bgsuffix.lstrip("_") if w.bgsuffix.lstrip("_") in BG_MAP else ""
     shell:
         """
         root -l -b -q 'Plots.C(false, {params.ak8}, {params.ak15}, false, "{params.bg_path}", "{params.bg_chan}", "{params.plot_params}", "{output}", {params.normalize}, {params.hadhad}, "{params.jet_path}")'

@@ -176,7 +176,7 @@
             fAK8, fAK15,
             "genH_pt",
             subjetCutAK8, subjetCutAK15,
-            TString("Subjet matching efficiency") + loose + TString("/ matched jet")
+            TString("Subjet matching efficiency") + loose + TString("/ all events")
         );
 
         // subjet matched / jet matched
@@ -187,7 +187,7 @@
             fAK8, fAK15,
             "genH_pt",
             subjetCutAK8, subjetCutAK15,
-            TString("Subjet matching efficiency") + loose + TString("/ matched jet")
+            TString("Subjet matching efficiency") + loose + TString("/ matched jets")
         );
 
         c1->cd();

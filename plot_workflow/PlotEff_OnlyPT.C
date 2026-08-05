@@ -11,11 +11,11 @@
 #include "eff_helpers.h"
 #include "TProfile.h"
 
-void PlotEff_OnlyPT(const char* save_path = "/eos/user/m/mroine/www",
-    const char* fRaw  = "/eos/user/m/mroine/NanoTuples/Htautau/workflow/jets/RawEventInfo_hadhad.root",
-    const char* fAK4  = "/eos/user/m/mroine/NanoTuples/Htautau/workflow/jets/Jet_hadhad.root",
-    const char* fAK8  = "/eos/user/m/mroine/NanoTuples/Htautau/workflow/jets/fatJet_hadhad.root",
-    const char* fAK15 = "/eos/user/m/mroine/NanoTuples/Htautau/workflow/jets/AK15_hadhad.root"
+void PlotEff_OnlyPT(const char* save_path = "/eos/user/m/mroine/NanoTuples/Htautau/plot_workflow/plots/MADGRAPH",
+    const char* fRaw  = "/eos/user/m/mroine/NanoTuples/Htautau/data_workflow/jets/MADGRAPH/RawEventInfo_hadhad.root",
+    const char* fAK4  = "/eos/user/m/mroine/NanoTuples/Htautau/data_workflow/jets/MADGRAPH/Jet_hadhad.root",
+    const char* fAK8  = "/eos/user/m/mroine/NanoTuples/Htautau/data_workflow/jets/MADGRAPH/fatJet_hadhad.root",
+    const char* fAK15 = "/eos/user/m/mroine/NanoTuples/Htautau/data_workflow/jets/MADGRAPH/AK15_hadhad.root"
 ) {
 
     TH1::AddDirectory(kFALSE); 
@@ -149,6 +149,6 @@ std::cout << "Generating Pad 2 (Energy Response Profile)..." << std::endl;
     latex.SetTextSize(0.04);
     latex.DrawLatex(0.03, 0.83, "H #rightarrow #tau#tau (125 GeV)");
 
-    c1->SaveAs(TString(save_path) + "/JetFatJetAK15_eff_with_Response.png"); 
-    std::cout << "Done! Saved to " << save_path << "/JetFatJetAK15_eff_with_Response.png" << std::endl;
+    c1->SaveAs(TString(save_path) + "/JetFatJetAK15_recoeff.png"); 
+    std::cout << "Done! Saved to " << save_path << "/JetFatJetAK15_recoeff.png" << std::endl;
 }

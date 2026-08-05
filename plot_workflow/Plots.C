@@ -100,7 +100,7 @@ void Plots(bool AK4 = true, bool AK8 = true, bool AK15 = true,  bool Tau = true,
         if (do_bg) {
             TString bg_file_path = TString(bg_path) + "/AK15BG_" + TString(bg_channel) + ".root"; 
             AK15_bg_f = new TFile(bg_file_path, "READ");
-            if (AK15_bg_f && !AK4_bg_f->IsZombie()) AK15_bg_tree = (TTree*)AK15_bg_f->Get("Events");
+            if (AK15_bg_f && !AK15_bg_f->IsZombie()) AK15_bg_tree = (TTree*)AK15_bg_f->Get("Events");
         }  
     }
 
@@ -142,7 +142,7 @@ void Plots(bool AK4 = true, bool AK8 = true, bool AK15 = true,  bool Tau = true,
         baseExpr.ReplaceAll(" ", ""); 
 
         TString hist_title = baseExpr;
-        hist_title.ReplaceAll("X_", "");
+        hist_title.ReplaceAll("XX_", "");
         hist_title.ReplaceAll("_", " ");
         hist_title.ReplaceAll("pt", "p_{T}");
         hist_title.ReplaceAll("eta", "#eta");
@@ -164,7 +164,7 @@ void Plots(bool AK4 = true, bool AK8 = true, bool AK15 = true,  bool Tau = true,
 
         if (AK4) {
             TString expr = baseExpr;
-            expr.ReplaceAll("X", "ak4"); 
+            expr.ReplaceAll("XX", "ak4"); 
             
             if (AK4_bg_tree) {
                 TString hNameBg = Form("h4_bg_%d", i);
@@ -198,103 +198,173 @@ void Plots(bool AK4 = true, bool AK8 = true, bool AK15 = true,  bool Tau = true,
 
         if (AK8) {
             TString expr = baseExpr;
-            expr.ReplaceAll("X", "fj"); 
-            
-            if (AK8_bg_tree) {
-                TString hNameBg = Form("h8_bg_%d", i);
-                if (AK8_bg_tree->Draw(expr + ">>" + hNameBg + Form("(%d)", kNBins), CutMissingValues(expr)) != -1) {
-                    TH1F* h = (TH1F*)gDirectory->Get(hNameBg);
-                    if (h) {
-                        h->SetLineColor(kRed + 5);
-                        h->SetLineStyle(2);
-                        h->SetLineWidth(2);
-                        if (normalize) h->Scale(1./h->Integral());
-                        hs->Add(h);
-                        if (i == 0) leg->AddEntry(h, "Anti k_{T}, R = 0.8 (Background)", "l");
-                    }
-                }
-            }
+            expr.ReplaceAll("XX", "fj");
+
+            TH1F* h_sig = nullptr;
+            TH1F* h_bg  = nullptr;
+
             if (AK8_tree) {
                 TString hName = Form("h8_%d", i);
-                if (AK8_tree->Draw(expr + ">>" + hName + Form("(%d)", kNBins), CutMissingValues(expr)) != -1) {
-                    TH1F* h = (TH1F*)gDirectory->Get(hName);
-                    if (h) {
-                        h->SetLineColor(kRed);
-                        h->SetLineStyle(1);
-                        h->SetLineWidth(2);
-                        if (normalize) h->Scale(1./h->Integral());
-                        hs->Add(h);
-                        if (i == 0) leg->AddEntry(h, "Anti k_{T}, R = 0.8, p_{T} > 200, |#eta| < 2.5", "l");
-                    }
+                if (gDirectory->Get(hName)) gDirectory->Delete(hName + ";*");
+
+                if (AK8_tree->Draw(expr + ">>" + hName + Form("(%d)", kNBins),
+                                CutMissingValues(expr), "goff") != -1) {
+                    h_sig = (TH1F*)gDirectory->Get(hName);
                 }
+            }
+
+            if (AK8_bg_tree) {
+                TString hNameBg = Form("h8_bg_%d", i);
+                if (gDirectory->Get(hNameBg)) gDirectory->Delete(hNameBg + ";*");
+
+                TString drawStrBg = expr + ">>" + hNameBg;
+                if (h_sig) {
+                    double xmin = h_sig->GetXaxis()->GetXmin();
+                    double xmax = h_sig->GetXaxis()->GetXmax();
+                    if (xmax > xmin) {
+                        drawStrBg += Form("(%d,%f,%f)", kNBins, xmin, xmax);
+                    } else {
+                        drawStrBg += Form("(%d)", kNBins);
+                    }
+                } else {
+                    drawStrBg += Form("(%d)", kNBins);
+                }
+
+                if (AK8_bg_tree->Draw(drawStrBg, CutMissingValues(expr), "goff") != -1) {
+                    h_bg = (TH1F*)gDirectory->Get(hNameBg);
+                }
+            }
+
+            if (h_bg) {
+                h_bg->SetLineColor(kRed + 5);
+                h_bg->SetLineStyle(2);
+                h_bg->SetLineWidth(2);
+                if (normalize && h_bg->Integral() > 0) h_bg->Scale(1.0 / h_bg->Integral());
+                hs->Add(h_bg);
+                if (i == 0) leg->AddEntry(h_bg, "Anti k_{T}, R = 0.8 (Background)", "l");
+            }
+            if (h_sig) {
+                h_sig->SetLineColor(kRed);
+                h_sig->SetLineStyle(1);
+                h_sig->SetLineWidth(2);
+                if (normalize && h_sig->Integral() > 0) h_sig->Scale(1.0 / h_sig->Integral());
+                hs->Add(h_sig);
+                if (i == 0) leg->AddEntry(h_sig, "Anti k_{T}, R = 0.8, p_{T} > 200, |#eta| < 2.5", "l");
             }
         }
 
         if (AK15) {
             TString expr = baseExpr;
-            expr.ReplaceAll("X", "ak15"); 
-            
-            if (AK15_bg_tree) {
-                TString hNameBg = Form("h15_bg_%d", i);
-                if (AK15_bg_tree->Draw(expr + ">>" + hNameBg + Form("(%d)", kNBins), CutMissingValues(expr)) != -1) {
-                    TH1F* h = (TH1F*)gDirectory->Get(hNameBg);
-                    if (h) {
-                        h->SetLineColor(kGreen + 7);
-                        h->SetLineStyle(2);
-                        h->SetLineWidth(2);
-                        if (normalize) h->Scale(1./h->Integral());
-                        hs->Add(h);
-                        if (i == 0) leg->AddEntry(h, "Anti k_{T}, R = 1.5 (Background)", "l");
-                    }
-                }
-            }
+            expr.ReplaceAll("XX", "ak15");
+
+            TH1F* h_sig = nullptr;
+            TH1F* h_bg  = nullptr;
+
             if (AK15_tree) {
                 TString hName = Form("h15_%d", i);
-                if (AK15_tree->Draw(expr + ">>" + hName + Form("(%d)", kNBins), CutMissingValues(expr)) != -1) {
-                    TH1F* h = (TH1F*)gDirectory->Get(hName);
-                    if (h) {
-                        h->SetLineColor(kGreen + 2);
-                        h->SetLineStyle(1);
-                        h->SetLineWidth(2);
-                        if (normalize) h->Scale(1./h->Integral());
-                        hs->Add(h); 
-                        if (i == 0) leg->AddEntry(h, "Anti k_{T}, R = 1.5, p_{T} > 150, |#eta| < 2.5", "l");
-                    }
+                if (gDirectory->Get(hName)) gDirectory->Delete(hName + ";*");
+
+                if (AK15_tree->Draw(expr + ">>" + hName + Form("(%d)", kNBins),
+                                    CutMissingValues(expr), "goff") != -1) {
+                    h_sig = (TH1F*)gDirectory->Get(hName);
                 }
             }
-        }
 
+            if (AK15_bg_tree) {
+                TString hNameBg = Form("h15_bg_%d", i);
+                if (gDirectory->Get(hNameBg)) gDirectory->Delete(hNameBg + ";*");
+
+                TString drawStrBg = expr + ">>" + hNameBg;
+                if (h_sig) {
+                    double xmin = h_sig->GetXaxis()->GetXmin();
+                    double xmax = h_sig->GetXaxis()->GetXmax();
+                    if (xmax > xmin) {
+                        drawStrBg += Form("(%d,%f,%f)", kNBins, xmin, xmax);
+                    } else {
+                        drawStrBg += Form("(%d)", kNBins);
+                    }
+                } else {
+                    drawStrBg += Form("(%d)", kNBins);
+                }
+
+                if (AK15_bg_tree->Draw(drawStrBg, CutMissingValues(expr), "goff") != -1) {
+                    h_bg = (TH1F*)gDirectory->Get(hNameBg);
+                }
+            }
+
+            if (h_bg) {
+                h_bg->SetLineColor(kGreen - 12);
+                h_bg->SetLineStyle(2);
+                h_bg->SetLineWidth(2);
+                if (normalize && h_bg->Integral() > 0) h_bg->Scale(1.0 / h_bg->Integral());
+                hs->Add(h_bg);
+                if (i == 0) leg->AddEntry(h_bg, "Anti k_{T}, R = 1.5 (Background)", "l");
+            }
+            if (h_sig) {
+                h_sig->SetLineColor(kGreen + 2);
+                h_sig->SetLineStyle(1);
+                h_sig->SetLineWidth(2);
+                if (normalize && h_sig->Integral() > 0) h_sig->Scale(1.0 / h_sig->Integral());
+                hs->Add(h_sig);
+                if (i == 0) leg->AddEntry(h_sig, "Anti k_{T}, R = 1.5, p_{T} > 150, |#eta| < 2.5", "l");
+            }
+        }
         if (Tau) {
             TString expr = baseExpr;
-            expr.ReplaceAll("X", "tau"); 
+            expr.ReplaceAll("XX", "tau"); 
+            
+            TH1F* h_sig = nullptr;
+            TH1F* h_bg  = nullptr;
+            
+            if (Tau_tree) {
+                TString hName = Form("htau_%d", i);
+                if (gDirectory->Get(hName)) gDirectory->Delete(hName + ";*");
+                
+                if (Tau_tree->Draw(expr + ">>" + hName + Form("(%d)", kNBins), CutMissingValues(expr), "goff") != -1) {
+                    h_sig = (TH1F*)gDirectory->Get(hName);
+                }
+            }
             
             if (Tau_bg_tree) {
                 TString hNameBg = Form("htau_bg_%d", i);
-                if (Tau_bg_tree->Draw(expr + ">>" + hNameBg + Form("(%d)", kNBins), CutMissingValues(expr)) != -1) {
-                    TH1F* h = (TH1F*)gDirectory->Get(hNameBg);
-                    if (h) {
-                        h->SetLineColor(kBlack + 5);
-                        h->SetLineStyle(2);
-                        h->SetLineWidth(2);
-                        if (normalize) h->Scale(1./h->Integral());
-                        hs->Add(h); 
-                        if (i == 0) leg->AddEntry(h, "Slimmed tau (Background)", "l");
+                if (gDirectory->Get(hNameBg)) gDirectory->Delete(hNameBg + ";*");
+                
+                TString drawStrBg = expr + ">>" + hNameBg;
+                
+                if (h_sig) {
+                    double xmin = h_sig->GetXaxis()->GetXmin();
+                    double xmax = h_sig->GetXaxis()->GetXmax();
+                    
+                    if (xmax > xmin) {
+                        drawStrBg += Form("(%d,%f,%f)", kNBins, xmin, xmax);
+                    } else {
+                        drawStrBg += Form("(%d)", kNBins); // Fallback for zero-width
                     }
+                } else {
+                    drawStrBg += Form("(%d)", kNBins); // Fallback if no signal
+                }
+                
+                if (Tau_bg_tree->Draw(drawStrBg, CutMissingValues(expr), "goff") != -1) {
+                    h_bg = (TH1F*)gDirectory->Get(hNameBg);
                 }
             }
-            if (Tau_tree) {
-                TString hName = Form("htau_%d", i);
-                if (Tau_tree->Draw(expr + ">>" + hName + Form("(%d)", kNBins), CutMissingValues(expr)) != -1) {
-                    TH1F* h = (TH1F*)gDirectory->Get(hName);
-                    if (h) {
-                        h->SetLineColor(kBlack);
-                        h->SetLineStyle(1);
-                        h->SetLineWidth(2);
-                        if (normalize) h->Scale(1./h->Integral());
-                        hs->Add(h); 
-                        if (i == 0) leg->AddEntry(h, "Slimmed tau after basic selection, |#eta| < 2.5", "l");
-                    }
-                }
+            
+            if (h_bg) {
+                h_bg->SetLineColor(kBlack + 5);
+                h_bg->SetLineStyle(2);
+                h_bg->SetLineWidth(2);
+                if (normalize && h_bg->Integral() > 0) h_bg->Scale(1.0 / h_bg->Integral());
+                hs->Add(h_bg); 
+                if (i == 0) leg->AddEntry(h_bg, "Slimmed tau (Background)", "l");
+            }
+            
+            if (h_sig) {
+                h_sig->SetLineColor(kBlack);
+                h_sig->SetLineStyle(1);
+                h_sig->SetLineWidth(2);
+                if (normalize && h_sig->Integral() > 0) h_sig->Scale(1.0 / h_sig->Integral());
+                hs->Add(h_sig); 
+                if (i == 0) leg->AddEntry(h_sig, "Slimmed tau after basic selection, |#eta| < 2.5", "l");
             }
         }
     
@@ -358,6 +428,27 @@ void Plots(bool AK4 = true, bool AK8 = true, bool AK15 = true,  bool Tau = true,
         } else {
             hs->GetXaxis()->SetRangeUser(hs->GetXaxis()->GetXmin(), hs->GetXaxis()->GetXmax());
         }
+
+
+        // Y-axis: scale to tallest hist in the visible X window
+        double y_max = 0.0;
+        TIter next_y(hs->GetHists());
+        TH1F* hy = nullptr;
+        while ((hy = (TH1F*)next_y())) {
+            const int bmin = hy->FindBin(hs->GetXaxis()->GetXmin());
+            const int bmax = hy->FindBin(hs->GetXaxis()->GetXmax());
+            for (int b = bmin; b <= bmax; ++b) {
+                const double c = hy->GetBinContent(b);
+                if (c > y_max) y_max = c;
+            }
+        }
+        if (y_max > 0.0) {
+            hs->SetMaximum(1.15 * y_max);  // small headroom so peaks aren't flush
+            hs->SetMinimum(0.0);
+        }
+        gPad->Modified();
+        gPad->Update();
+
     }
 
     c1->cd(0); 

@@ -1,34 +1,65 @@
 import os
 import hashlib
 
-BG_DATA_DIRS = {
-    "TTto4Q": "/eos/user/m/mroine/NanoTuples/Htautau/data_workflow/background/POWHEG/TauBG_TTto4Q.root",
-    "TTtoLNu2Q": "/eos/user/m/mroine/NanoTuples/Htautau/data_workflow/background/POWHEG/TauBG_TTtoLNu2Q.root",
-    "TTto2L2Nu": "/eos/user/m/mroine/NanoTuples/Htautau/data_workflow/background/POWHEG/TauBG_TTto2L2Nu.root",
-    "DYto2Tau": "/eos/user/m/mroine/NanoTuples/Htautau/data_workflow/background/POWHEG/TauBG_DYto2Tau.root"
-}
+BG_BASE_DIR = "/eos/user/m/mroine/NanoTuples/Htautau/data_workflow/background"
+VALID_BGS = ["TTto4Q", "TTtoLNu2Q", "TTto2L2Nu", "DYto2Tau"]
 
-SIGNAL_DATA_DIRS = {
-    "TauHadHad": "/eos/user/m/mroine/NanoTuples/Htautau/data_workflow/jets/POWHEG/Tau_hadhad.root" 
-}
 
 config.setdefault("sig", "TauHadHad")
+config.setdefault("sig_generator", "POWHEG")
 config.setdefault("bg", "TTto4Q")
 config.setdefault("num_taus", 1)
+config.setdefault("use_subjets", False)
 config.setdefault("seed", 100)
 config.setdefault("cms_label", "Work in Progress")
 config.setdefault("variables", [])
+config.setdefault("compare_modes", ["AK8", "AK15"])
+config.setdefault("compare_names", None)
+config.setdefault("use_all", True)
+config.setdefault("use_weights", False)
+config.setdefault("fpr", [1.0])
 
-try:
-    SIG_PATH = SIGNAL_DATA_DIRS[config["sig"]]
-    BG_PATH = BG_DATA_DIRS[config["bg"]]
-except KeyError as e:
-    raise ValueError(f"Dataset alias {e} not found in registries. Available signals: {list(SIGNAL_DATA_DIRS.keys())}, Available backgrounds: {list(BG_DATA_DIRS.keys())}")
+raw_fprs = config["fpr"]
+if isinstance(raw_fprs, str):
+    raw_fprs = [float(x.strip()) for x in raw_fprs.split(",")]
+elif not isinstance(raw_fprs, list):
+    raw_fprs = [raw_fprs]
 
+FPRS = [float(f) for f in raw_fprs]
+FPR_STRS = [f"{f:.6f}" for f in FPRS]
+
+SIG_GENERATOR = config["sig_generator"]
 SIG_NAME = config["sig"]
 BG_NAME = config["bg"]
+USE_SUBJETS = config["use_subjets"]
 NUM_TAUS = config["num_taus"]
 SEED = config["seed"]
+USE_WEIGHTS = config["use_weights"]
+
+SIG_BASE_DIR = f"/eos/user/m/mroine/NanoTuples/Htautau/data_workflow/jets/{SIG_GENERATOR}"
+SIGNAL_DATA_DIRS = {
+    "TauHadHad": f"{SIG_BASE_DIR}/Tau_hadhad.root",
+    "fatJet_hadhad": f"{SIG_BASE_DIR}/fatJet_hadhad.root",
+    "AK15_hadhad": f"{SIG_BASE_DIR}/AK15_hadhad.root"
+}
+
+if SIG_NAME not in SIGNAL_DATA_DIRS:
+    raise ValueError(f"Signal {SIG_NAME} not found. Available signals: {list(SIGNAL_DATA_DIRS.keys())}")
+if BG_NAME not in VALID_BGS:
+    raise ValueError(f"Background {BG_NAME} not found. Available backgrounds: {VALID_BGS}")
+
+if SIG_NAME == "TauHadHad":
+    MODE = "Tau"
+    bg_prefix = "TauBG"
+elif SIG_NAME == "fatJet_hadhad":
+    MODE = "AK8"
+    bg_prefix = "fatJetBG"
+elif SIG_NAME == "AK15_hadhad":
+    MODE = "AK15"
+    bg_prefix = "AK15BG"
+
+SIG_PATH = SIGNAL_DATA_DIRS[SIG_NAME]
+BG_PATH = f"{BG_BASE_DIR}/{BG_NAME}/{bg_prefix}_{BG_NAME}.root"
 
 VAR_FLAG = ""
 if config["variables"]:
@@ -40,26 +71,106 @@ if config["variables"]:
     var_hash = hashlib.md5(var_str.encode()).hexdigest()[:6]
     VAR_SUFFIX = f"_vars{var_hash}"
 
-RUN_ID = f"{SIG_NAME}_vs_{BG_NAME}_{NUM_TAUS}taus_seed{SEED}{VAR_SUFFIX}"
+SUBJET_FLAG = "--use_subjets" if USE_SUBJETS else ""
+WEIGHT_FLAG = "--use_weights" if USE_WEIGHTS else ""
+WEIGHT_SUFFIX = "weighted" if USE_WEIGHTS else "unweighted"
+
+if MODE == "Tau":
+    MODE_STR = f"tau_{NUM_TAUS}taus"
+else:
+    sub_str = "wSubjets" if USE_SUBJETS else "noSubjets"
+    MODE_STR = f"{MODE}_{sub_str}"
+
+RUN_ID = f"{SIG_NAME}_{SIG_GENERATOR}_vs_{BG_NAME}_{MODE_STR}_seed{SEED}_{WEIGHT_SUFFIX}{VAR_SUFFIX}"
+
+COMPARE_MODES = config["compare_modes"]
+COMPARE_NAMES = config["compare_names"] or COMPARE_MODES
+USE_ALL_FLAG = "--use_all" if config["use_all"] else ""
+MODE_TO_SIG = {
+    "Tau": "TauHadHad",
+    "AK8": "fatJet_hadhad",
+    "AK15": "AK15_hadhad",
+}
+MODE_TO_BG_PREFIX = {
+    "Tau": "TauBG",
+    "AK8": "fatJetBG",
+    "AK15": "AK15BG",
+}
+
+def mode_str(mode):
+    if mode == "Tau":
+        return f"tau_{NUM_TAUS}taus"
+    sub_str = "wSubjets" if USE_SUBJETS else "noSubjets"
+    return f"{mode}_{sub_str}"
+
+def run_id_for_mode(mode):
+    sig_name = MODE_TO_SIG[mode]
+    return (
+        f"{sig_name}_{SIG_GENERATOR}_vs_{BG_NAME}_{mode_str(mode)}"
+        f"_seed{SEED}_{WEIGHT_SUFFIX}{VAR_SUFFIX}"
+    )
+
+def sig_path_for_mode(mode):
+    return SIGNAL_DATA_DIRS[MODE_TO_SIG[mode]]
+
+def bg_path_for_mode(mode):
+    return f"{BG_BASE_DIR}/{BG_NAME}/{MODE_TO_BG_PREFIX[mode]}_{BG_NAME}.root"
+
+# make shit compatible w/ my legacy model naming conventions
+def get_model_file(mode):
+    sig_name = MODE_TO_SIG[mode]
+    m_str = mode_str(mode)
+
+    standard_path = f"results/bdt_{sig_name}_{SIG_GENERATOR}_vs_{BG_NAME}_{m_str}_seed{SEED}{VAR_SUFFIX}.json"
+    legacy_path = f"results/bdt_{sig_name}_vs_{BG_NAME}_{m_str}_seed{SEED}{VAR_SUFFIX}.json"
+
+    if os.path.exists(standard_path):
+        return standard_path
+    elif os.path.exists(legacy_path):
+        return legacy_path
+        
+    return standard_path
+
+comp_sub_str = "wSubjets" if USE_SUBJETS else "noSubjets"
+COMPARE_ID = (
+    f"cmp_{'_'.join(COMPARE_MODES)}_vs_{BG_NAME}"
+    f"_{SIG_GENERATOR}_"
+    f"_{comp_sub_str}"
+    f"_{'all' if config['use_all'] else f'seed{SEED}'}"
+    f"_{WEIGHT_SUFFIX}" 
+    f"{VAR_SUFFIX}"
+)
 
 rule all:
     input:
-        f"results/corr_sig_{SIG_NAME}_{NUM_TAUS}taus{VAR_SUFFIX}.png",
-        f"results/corr_bg_{BG_NAME}_{NUM_TAUS}taus{VAR_SUFFIX}.png",
+        f"results/corr_sig_{SIG_NAME}_{MODE_STR}{VAR_SUFFIX}.png",
+        f"results/corr_bg_{BG_NAME}_{MODE_STR}{VAR_SUFFIX}.png",
         f"results/bdt_{RUN_ID}.json",
         f"results/roc_{RUN_ID}.png",
         f"results/feat_{RUN_ID}.png",
-        f"results/conf_{RUN_ID}.png"
+        f"results/conf_{RUN_ID}.png",
+        f"results/auc_pt_{RUN_ID}.png",
+        f"results/auc_pt_compare_{COMPARE_ID}.png",
+        expand(f"results/auc_pt_compare_{COMPARE_ID}_FPR{{fpr_str}}.png", fpr_str=FPR_STRS),
+        expand(f"results/tagging_eff_compare_{COMPARE_ID}_matched_FPR{{fpr_str}}.png", fpr_str=FPR_STRS),
+        expand(f"results/tagging_eff_compare_{COMPARE_ID}_absolute_FPR{{fpr_str}}.png", fpr_str=FPR_STRS),
+        expand(f"results/sigeff_pt_compare_{COMPARE_ID}_FPR{{fpr_str}}.png", fpr_str=FPR_STRS),
+        expand(f"results/abs_eval_auc_pt_{COMPARE_ID}_FPR{{fpr_str}}.png", fpr_str=FPR_STRS),
+        expand(f"results/abs_eval_roc_{COMPARE_ID}_FPR{{fpr_str}}.png", fpr_str=FPR_STRS),
+        expand(f"results/abs_eval_sigeff_pt_{COMPARE_ID}_FPR{{fpr_str}}.png", fpr_str=FPR_STRS)
+
 
 rule plot_correlations:
     input:
         sig = SIG_PATH,
         bg = BG_PATH
     output:
-        sig_corr = f"results/corr_sig_{SIG_NAME}_{NUM_TAUS}taus{VAR_SUFFIX}.png",
-        bg_corr = f"results/corr_bg_{BG_NAME}_{NUM_TAUS}taus{VAR_SUFFIX}.png"
+        sig_corr = f"results/corr_sig_{SIG_NAME}_{MODE_STR}{VAR_SUFFIX}.png",
+        bg_corr = f"results/corr_bg_{BG_NAME}_{MODE_STR}{VAR_SUFFIX}.png"
     params:
-        num_taus = config["num_taus"],
+        mode = MODE,
+        num_taus = NUM_TAUS,
+        subjet_flag = SUBJET_FLAG,
         cms_label = config["cms_label"],
         var_flag = VAR_FLAG
     shell:
@@ -69,6 +180,8 @@ rule plot_correlations:
             --bg {input.bg} \
             --out_sig {output.sig_corr} \
             --out_bg {output.bg_corr} \
+            --mode {params.mode} \
+            {params.subjet_flag} \
             --num_taus {params.num_taus} \
             --cms-label "{params.cms_label}" \
             {params.var_flag}
@@ -81,8 +194,10 @@ rule train_bdt:
     output:
         model = f"results/bdt_{RUN_ID}.json"
     params:
-        num_taus = config["num_taus"],
-        seed = config["seed"],
+        mode = MODE,
+        num_taus = NUM_TAUS,
+        subjet_flag = SUBJET_FLAG,
+        seed = SEED,
         var_flag = VAR_FLAG
     shell:
         """
@@ -90,6 +205,8 @@ rule train_bdt:
             --sig {input.sig} \
             --bg {input.bg} \
             --out_model {output.model} \
+            --mode {params.mode} \
+            {params.subjet_flag} \
             --num_taus {params.num_taus} \
             --seed {params.seed} \
             {params.var_flag}
@@ -103,11 +220,14 @@ rule bdt_inference:
     output:
         roc = f"results/roc_{RUN_ID}.png",
         feat = f"results/feat_{RUN_ID}.png",
-        conf = f"results/conf_{RUN_ID}.png"
+        conf = f"results/conf_{RUN_ID}.png",
+        auc_pt = f"results/auc_pt_{RUN_ID}.png"
     params:
-        seed = config["seed"],
-        var_flag = VAR_FLAG,
-        num_taus = config["num_taus"]
+        mode = MODE,
+        num_taus = NUM_TAUS,
+        subjet_flag = SUBJET_FLAG,
+        seed = SEED,
+        var_flag = VAR_FLAG
     shell:
         """
         python BDT_inference.py \
@@ -117,7 +237,165 @@ rule bdt_inference:
             --out_roc {output.roc} \
             --out_feat {output.feat} \
             --out_conf {output.conf} \
-            --seed {params.seed} \
+            --out_auc_pt {output.auc_pt} \
+            --mode {params.mode} \
+            {params.subjet_flag} \
             --num_taus {params.num_taus} \
+            --seed {params.seed} \
             {params.var_flag}
+        """
+
+rule compare_bdts:
+    input:
+        expand(f"results/sigeff_pt_compare_{COMPARE_ID}_FPR{{fpr_str}}.png", fpr_str=FPR_STRS),
+        expand(f"results/auc_pt_compare_{COMPARE_ID}_FPR{{fpr_str}}.png", fpr_str=FPR_STRS)
+
+rule run_compare_bdts:
+    input:
+        models = [get_model_file(m) for m in COMPARE_MODES],
+        sigs = [sig_path_for_mode(m) for m in COMPARE_MODES],
+        bgs = [bg_path_for_mode(m) for m in COMPARE_MODES],
+    output:
+        plot_auc = f"results/auc_pt_compare_{COMPARE_ID}_FPR{{fpr_str}}.png",
+        plot_sig_eff = f"results/sigeff_pt_compare_{COMPARE_ID}_FPR{{fpr_str}}.png"
+    params:
+        modes = COMPARE_MODES,
+        names = COMPARE_NAMES,
+        num_taus = NUM_TAUS,
+        subjet_flag = SUBJET_FLAG,
+        seed = SEED,
+        use_all_flag = USE_ALL_FLAG,
+        fpr = lambda wildcards: float(wildcards.fpr_str) / 100.0,
+        weight_flag = WEIGHT_FLAG
+    shell:
+        """
+        python BDT_inference_fair.py \
+            --sigs {input.sigs} \
+            --bgs {input.bgs} \
+            --models {input.models} \
+            --modes {params.modes} \
+            --names {params.names} \
+            --out_plot {output.plot_auc} \
+            --out_eff_plot {output.plot_sig_eff} \
+            --num_taus {params.num_taus} \
+            --seed {params.seed} \
+            --fpr {params.fpr} \
+            {params.subjet_flag} \
+            {params.use_all_flag} \
+            {params.weight_flag}
+        """
+
+
+rule compare_tagging_eff:
+    input:
+        expand(f"results/tagging_eff_compare_{COMPARE_ID}_matched_FPR{{fpr_str}}.png", fpr_str=FPR_STRS),
+        expand(f"results/tagging_eff_compare_{COMPARE_ID}_absolute_FPR{{fpr_str}}.png", fpr_str=FPR_STRS)
+
+rule run_compare_tagging_eff:
+    input:
+        models = [get_model_file(m) for m in COMPARE_MODES],
+        sigs = [sig_path_for_mode(m) for m in COMPARE_MODES],
+        bgs = [bg_path_for_mode(m) for m in COMPARE_MODES],
+        raw_sig = "/eos/user/m/mroine/NanoTuples/Htautau/data_workflow/jets/MADGRAPH/RawEventInfo_hadhad.root"
+    output:
+        plot_matched = f"results/tagging_eff_compare_{COMPARE_ID}_matched_FPR{{fpr_str}}.png",
+        plot_absolute = f"results/tagging_eff_compare_{COMPARE_ID}_absolute_FPR{{fpr_str}}.png"
+    params:
+        modes = COMPARE_MODES,
+        names = COMPARE_NAMES,
+        num_taus = NUM_TAUS,
+        subjet_flag = SUBJET_FLAG,
+        seed = SEED,
+        base_plot_name = f"results/tagging_eff_compare_{COMPARE_ID}.png",
+        fpr = lambda wildcards: float(wildcards.fpr_str) / 100.0
+    shell:
+        """
+        python tagging_efficiency.py \
+            --sigs {input.sigs} \
+            --bgs {input.bgs} \
+            --models {input.models} \
+            --modes {params.modes} \
+            --names {params.names} \
+            --raw_sig {input.raw_sig} \
+            --out_plot {params.base_plot_name} \
+            --num_taus {params.num_taus} \
+            --seed {params.seed} \
+            --fpr {params.fpr} \
+            {params.subjet_flag}
+        """
+
+rule absolute_evaluation:
+    input:
+        f"results/abs_eval_roc_{COMPARE_ID}.png",
+        f"results/abs_eval_rej_{COMPARE_ID}.png",
+        expand(f"results/abs_eval_sigeff_pt_{COMPARE_ID}_FPR{{fpr_str}}.png", fpr_str=FPR_STRS)
+
+rule run_absolute_evaluation_roc:
+    input:
+        models = [get_model_file(m) for m in COMPARE_MODES],
+        sigs = [sig_path_for_mode(m) for m in COMPARE_MODES],
+        bgs = [bg_path_for_mode(m) for m in COMPARE_MODES],
+        raw_sig = f"/eos/user/m/mroine/NanoTuples/Htautau/data_workflow/jets/{SIG_GENERATOR}/RawEventInfo_hadhad.root",
+        raw_bg = f"{BG_BASE_DIR}/{BG_NAME}/RawEventInfoBG_{BG_NAME}.root"
+    output:
+        plot_roc = f"results/abs_eval_roc_{COMPARE_ID}.png",
+        plot_rej = f"results/abs_eval_rej_{COMPARE_ID}.png"
+    params:
+        modes = COMPARE_MODES,
+        names = COMPARE_NAMES,
+        num_taus = NUM_TAUS,
+        subjet_flag = SUBJET_FLAG,
+        seed = SEED,
+        use_all_flag = USE_ALL_FLAG
+    shell:
+        """
+        python theUltimateComparison.py \
+            --sigs {input.sigs} \
+            --bgs {input.bgs} \
+            --models {input.models} \
+            --modes {params.modes} \
+            --names {params.names} \
+            --raw_sig {input.raw_sig} \
+            --raw_bg {input.raw_bg} \
+            --out_plot {output.plot_roc} \
+            --out_rej_plot {output.plot_rej} \
+            --num_taus {params.num_taus} \
+            --seed {params.seed} \
+            {params.subjet_flag} \
+            {params.use_all_flag}
+        """
+
+rule run_absolute_evaluation_eff:
+    input:
+        models = [get_model_file(m) for m in COMPARE_MODES],
+        sigs = [sig_path_for_mode(m) for m in COMPARE_MODES],
+        bgs = [bg_path_for_mode(m) for m in COMPARE_MODES],
+        raw_sig = f"/eos/user/m/mroine/NanoTuples/Htautau/data_workflow/jets/{SIG_GENERATOR}/RawEventInfo_hadhad.root",
+        raw_bg = f"{BG_BASE_DIR}/{BG_NAME}/RawEventInfoBG_{BG_NAME}.root"
+    output:
+        plot_eff = f"results/abs_eval_sigeff_pt_{COMPARE_ID}_FPR{{fpr_str}}.png"
+    params:
+        modes = COMPARE_MODES,
+        names = COMPARE_NAMES,
+        num_taus = NUM_TAUS,
+        subjet_flag = SUBJET_FLAG,
+        seed = SEED,
+        use_all_flag = USE_ALL_FLAG,
+        fpr = lambda wildcards: float(wildcards.fpr_str) / 100.0
+    shell:
+        """
+        python AbsoluteEfficiency.py \
+            --sigs {input.sigs} \
+            --bgs {input.bgs} \
+            --models {input.models} \
+            --modes {params.modes} \
+            --names {params.names} \
+            --raw_sig {input.raw_sig} \
+            --raw_bg {input.raw_bg} \
+            --out_plot {output.plot_eff} \
+            --num_taus {params.num_taus} \
+            --seed {params.seed} \
+            --fpr {params.fpr} \
+            {params.subjet_flag} \
+            {params.use_all_flag}
         """

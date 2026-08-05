@@ -20,11 +20,6 @@ void BuildBg(
     int threads = 6
 ) {
 
-    if (!include_Tau && !include_AK8 && !include_AK15) {
-        std::cerr << "You have to include somehting" <<std::endl;
-        return;
-    }
-
     if (threads > 1) {
         ROOT::EnableImplicitMT(threads);
     }
@@ -35,6 +30,7 @@ void BuildBg(
     ROOT::RDF::RNode df_AK4 = df;
     ROOT::RDF::RNode df_AK8 = df;
     ROOT::RDF::RNode df_AK15 = df;
+
 
     if (include_Tau) {
         df_Tau = df
@@ -99,9 +95,9 @@ void BuildBg(
     if (include_AK8) {
         df_AK8 = df
             .Filter("nFatJet >= 1", "Require at least one fatJet")
-            .Filter("FatJet_eta < AK8_eta_max && FatJet_pt > AK8_min_pt ", "Same cuts as in signal")
             .Define("FatJet_tautau_Score", "FatJet_globalParT3_Xtauhtauh / (FatJet_globalParT3_Xtauhtauh + FatJet_globalParT3_QCD)")
             .Define("BestFatJetIdx", "GetHighestTauScore(FatJet_tautau_Score)")
+            .Filter("FatJet_eta[BestFatJetIdx] < AK8_eta_max && FatJet_pt[BestFatJetIdx] > AK8_min_pt ", "Same cuts as in signal")
 
             // Standard Kinematics
             .Define("fj_pt", "FatJet_pt[BestFatJetIdx]")
@@ -167,7 +163,7 @@ void BuildBg(
             // Corrections & Area
             .Define("fj_Subjet_area", "FillMatchedSubjet(SubJet_area, fj_subJetIdx1, fj_subJetIdx2)")
             .Define("fj_Subjet_rawFactor", "FillMatchedSubjet(SubJet_rawFactor, fj_subJetIdx1, fj_subJetIdx2)")
-            .Define("afj_Subjet_pt_rawFactorCorrected", "FillMatchedSubjet((1 - SubJet_rawFactor) * SubJet_pt, fj_subJetIdx1, fj_subJetIdx2)")
+            .Define("fj_Subjet_pt_rawFactorCorrected", "FillMatchedSubjet((1 - SubJet_rawFactor) * SubJet_pt, fj_subJetIdx1, fj_subJetIdx2)")
 
             // Substructure & N-subjettiness
             .Define("fj_Subjet_tau1", "FillMatchedSubjet(SubJet_tau1, fj_subJetIdx1, fj_subJetIdx2)")
@@ -196,9 +192,9 @@ void BuildBg(
     if (include_AK15) {
         df_AK15 = df
             .Filter("nAK15Puppi >= 1", "Require at least one AK15")
-            .Filter("AK15Puppi_pt >= AK15_min_pt && AK15Puppi_eta < AK15_eta_max", "Same cuts as in signal")
             .Define("ak15_tautau_Score", "AK15Puppi_ParTv3_probXtauhtauh / (AK15Puppi_ParTv3_probXtauhtauh + AK15Puppi_ParTv3_probQCD)")
             .Define("BestAK15Idx", "GetHighestTauScore(ak15_tautau_Score)")
+            .Filter("AK15Puppi_pt[BestAK15Idx] >= AK15_min_pt && AK15Puppi_eta[BestAK15Idx] < AK15_eta_max", "Same cuts as in signal")
 
             // Standard Kinematics
             .Define("ak15_pt", "AK15Puppi_pt[BestAK15Idx]")
@@ -281,6 +277,23 @@ void BuildBg(
         std::string out_dir = std::string(save_directory) + "/TauBG" + std::string(identifyer) + ".root";
         snapshots.push_back(df_Tau.Snapshot("Events", out_dir, TauBG_dict, opts));
     }
+
+    if (include_AK8) {
+        std::cout << "Skimming AK8 background... " << std::endl;
+        std::string out_dir = std::string(save_directory) + "/fatJetBG" + std::string(identifyer) + ".root";
+        snapshots.push_back(df_AK8.Snapshot("Events", out_dir, AK8BG_dict, opts));
+    }
+
+    if (include_AK15) {
+        std::cout << "Skimming AK15 background... " << std::endl;
+        std::string out_dir = std::string(save_directory) + "/AK15BG" + std::string(identifyer) + ".root";
+        snapshots.push_back(df_AK15.Snapshot("Events", out_dir, AK15BG_dict, opts));
+    }
+
+    std::cout << "Saving all event ids " << std::endl;
+    std::string raw_out_dir = std::string(save_directory) + "/RawEventInfoBG" + std::string(identifyer) + ".root";
+    std::vector<std::string> raw_columns = {"event"};
+    snapshots.push_back(df.Snapshot("Events", raw_out_dir, raw_columns, opts));
 
     if (!snapshots.empty()) {
         ROOT::RDF::RunGraphs(snapshots);
