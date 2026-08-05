@@ -107,7 +107,7 @@ void BuildBg(
             .Define("fj_msoftdrop", "FatJet_msoftdrop[BestFatJetIdx]")
             .Define("fj_rawFactor", "FatJet_rawFactor[BestFatJetIdx]")
 
-            // Extended FatJet Properties
+            // Properties
             .Define("fj_area", "FatJet_area[BestFatJetIdx]")
             .Define("fj_chEmEF", "FatJet_chEmEF[BestFatJetIdx]")
             .Define("fj_chHEF", "FatJet_chHEF[BestFatJetIdx]")
@@ -165,7 +165,7 @@ void BuildBg(
             .Define("fj_Subjet_rawFactor", "FillMatchedSubjet(SubJet_rawFactor, fj_subJetIdx1, fj_subJetIdx2)")
             .Define("fj_Subjet_pt_rawFactorCorrected", "FillMatchedSubjet((1 - SubJet_rawFactor) * SubJet_pt, fj_subJetIdx1, fj_subJetIdx2)")
 
-            // Substructure & N-subjettiness
+            // Substructure 
             .Define("fj_Subjet_tau1", "FillMatchedSubjet(SubJet_tau1, fj_subJetIdx1, fj_subJetIdx2)")
             .Define("fj_Subjet_tau2", "FillMatchedSubjet(SubJet_tau2, fj_subJetIdx1, fj_subJetIdx2)")
             .Define("fj_Subjet_tau3", "FillMatchedSubjet(SubJet_tau3, fj_subJetIdx1, fj_subJetIdx2)")
@@ -173,14 +173,14 @@ void BuildBg(
             .Define("fj_Subjet_n2b1", "FillMatchedSubjet(SubJet_n2b1, fj_subJetIdx1, fj_subJetIdx2)")
             .Define("fj_Subjet_n3b1", "FillMatchedSubjet(SubJet_n3b1, fj_subJetIdx1, fj_subJetIdx2)")
 
-            // B-Tagging & Flavour
+            // flavour
             .Define("fj_Subjet_btagDeepFlavB", "FillMatchedSubjet(SubJet_btagDeepFlavB, fj_subJetIdx1, fj_subJetIdx2)")
             .Define("fj_Subjet_btagUParTAK4B", "FillMatchedSubjet(SubJet_btagUParTAK4B, fj_subJetIdx1, fj_subJetIdx2)")
             .Define("fj_Subjet_hadronFlavour", "FillMatchedSubjet(SubJet_hadronFlavour, fj_subJetIdx1, fj_subJetIdx2)")
             .Define("fj_Subjet_nBHadrons", "FillMatchedSubjet(SubJet_nBHadrons, fj_subJetIdx1, fj_subJetIdx2)")
             .Define("fj_Subjet_nCHadrons", "FillMatchedSubjet(SubJet_nCHadrons, fj_subJetIdx1, fj_subJetIdx2)")
 
-            // UParT Regressions & Resolutions
+            // UParT Regressions
             .Define("fj_Subjet_UParTAK4RegPtRawCorr", "FillMatchedSubjet(SubJet_UParTAK4RegPtRawCorr, fj_subJetIdx1, fj_subJetIdx2)")
             .Define("fj_Subjet_UParTAK4RegPtRawCorrNeutrino", "FillMatchedSubjet(SubJet_UParTAK4RegPtRawCorrNeutrino, fj_subJetIdx1, fj_subJetIdx2)")
             .Define("fj_Subjet_UParTAK4RegPtRawRes", "FillMatchedSubjet(SubJet_UParTAK4RegPtRawRes, fj_subJetIdx1, fj_subJetIdx2)")
@@ -205,16 +205,16 @@ void BuildBg(
             .Define("ak15_rawFactor", "AK15Puppi_rawFactor[BestAK15Idx]")
             .Define("ak15_area", "AK15Puppi_area[BestAK15Idx]")
 
-            // Jet ID & Flavour
+            // flavour
             .Define("ak15_nBHadrons", "AK15Puppi_nBHadrons[BestAK15Idx]")
             .Define("ak15_nCHadrons", "AK15Puppi_nCHadrons[BestAK15Idx]")
 
-            // Substructure & N-subjettiness
+            // Substructure 
             .Define("ak15_tau1", "AK15Puppi_tau1[BestAK15Idx]")
             .Define("ak15_tau2", "AK15Puppi_tau2[BestAK15Idx]")
             .Define("ak15_tau3", "AK15Puppi_tau3[BestAK15Idx]")
 
-            // ParTv3 Scores & Corrections
+            // ParTv3 Scores 
             .Define("ak15_ParTv3_massCorrGeneric", "AK15Puppi_ParTv3_massCorrGeneric[BestAK15Idx]")
             .Define("ak15_ParTv3_massCorrResonance", "AK15Puppi_ParTv3_massCorrResonance[BestAK15Idx]")
             .Define("ak15_ParTv3_massCorrX2p", "AK15Puppi_ParTv3_massCorrX2p[BestAK15Idx]")
@@ -236,7 +236,7 @@ void BuildBg(
             .Define("ak15_ParTv3_probXtauhtauh", "AK15Puppi_ParTv3_probXtauhtauh[BestAK15Idx]")
             .Define("ak15_ParTv3_probXtauhtaum", "AK15Puppi_ParTv3_probXtauhtaum[BestAK15Idx]")
 
-            // ParticleNetMD Scores & Corrections
+            // ParticleNetMD 
             .Define("ak15_ParticleNetMD_mass", "AK15Puppi_ParticleNetMD_mass[BestAK15Idx]")
             .Define("ak15_ParticleNetMD_probQCDb", "AK15Puppi_ParticleNetMD_probQCDb[BestAK15Idx]")
             .Define("ak15_ParticleNetMD_probQCDbb", "AK15Puppi_ParticleNetMD_probQCDbb[BestAK15Idx]")
