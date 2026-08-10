@@ -56,8 +56,8 @@ def main():
     bin_widths = [pt_bins[i + 1] - pt_bins[i] for i in range(len(pt_bins) - 1)]
     x_err = [bin_centers[i] - pt_bins[i] for i in range(len(bin_centers))]
     
-    fig_mat, (ax_eff_mat, ax_yield_mat) = plt.subplots(
-        2, 1, figsize=(8, 8), sharex=True, gridspec_kw={"height_ratios": [3, 1]}, dpi=150,
+    fig_mat, (ax_eff_mat, ax_ratio_mat, ax_yield_mat) = plt.subplots(
+        3, 1, figsize=(8, 10), sharex=True, gridspec_kw={"height_ratios": [3, 1, 1]}, dpi=150,
     )
     fig_abs, (ax_eff_abs, ax_yield_abs) = plt.subplots(
         2, 1, figsize=(8, 8), sharex=True, gridspec_kw={"height_ratios": [3, 1]}, dpi=150,
@@ -79,7 +79,9 @@ def main():
         n_gen_list.append(np.sum(mask_raw))
 
     all_sig_yields_mat = []
-    
+    ref_effs_mat = None
+    ref_errs_mat = None
+
     for j in range(num_models):
         print(f"Processing {args.names[j]} ({args.modes[j]})...")
         
@@ -162,6 +164,25 @@ def main():
             capsize=3, label=f"{args.names[j]} (Cut: {threshold:.3f})",
         )
 
+        effs_arr = np.array(sig_effs_mat)
+        errs_arr = np.array(sig_errs_mat)
+
+        if j == 0:
+            ref_effs_mat = effs_arr
+            ref_errs_mat = errs_arr
+            ax_ratio_mat.axhline(1.0, color='black', linestyle='--')
+        else:
+            with np.errstate(divide='ignore', invalid='ignore'):
+                ratio_mat = effs_arr / ref_effs_mat
+                ratio_err_mat = ratio_mat * np.sqrt(
+                    (errs_arr / effs_arr)**2 + (ref_errs_mat / ref_effs_mat)**2
+                )
+            
+            ax_ratio_mat.errorbar(
+                bin_centers, ratio_mat, xerr=x_err, yerr=ratio_err_mat,
+                fmt=f"{markers[j % len(markers)]}", color=colors[j % len(colors)],
+                capsize=3
+            )
 
     ax_yield_abs.bar(bin_centers, n_gen_list, width=bin_widths, alpha=0.2, color="black", label="Total events")
     for j in range(num_models):
@@ -178,22 +199,28 @@ def main():
             label=f"Matched {args.names[j]}"
         )
 
+    br = 1.0 / args.fpr
+    br_str = f"{br:.0e}"
 
-    ax_eff_mat.set_ylabel(f"Tagging Eff. @ {args.fpr*100:.1f}%")
-    ax_eff_mat.legend(loc="best")
+    ax_eff_mat.set_ylabel(f"Tagging Eff.")
+    ax_eff_mat.legend(loc="best", title=f"Background Rejection {br_str}", title_fontsize=14)
     ax_eff_mat.grid(axis="y", which="major", linestyle="-", alpha=0.7)
     ax_eff_mat.grid(axis="y", which="minor", linestyle=":", alpha=0.4)
     ax_eff_mat.grid(axis="x", linestyle=":", alpha=0.7)
     hep.cms.label("Work in Progress", data=False, rlabel=r"$H \to \tau\tau$ (125 GeV)", ax=ax_eff_mat, loc=0, fontsize=14)
+
+    ax_ratio_mat.set_ylabel(f"/{args.modes[0]}")
+    ax_ratio_mat.grid(axis="y", which="major", linestyle="-", alpha=0.7)
+    ax_ratio_mat.grid(axis="x", linestyle=":", alpha=0.7)
+
     ax_yield_mat.set_yscale("log")
     ax_yield_mat.set_xlabel(r"Higgs $p_T$ [GeV]")
     ax_yield_mat.set_ylabel("Events")
     ax_yield_mat.grid(axis="y", linestyle=":", alpha=0.7)
     ax_yield_mat.legend(loc="upper right", fontsize=8, ncol=2)
     fig_mat.tight_layout()
-    out_name_mat = args.out_plot.replace(".png", f"_matched_FPR{args.fpr*100:.1f}.png")
+    out_name_mat = args.out_plot.replace(".png", f"_matched.png")
     fig_mat.savefig(out_name_mat, bbox_inches="tight")
-    
     
     ax_eff_abs.set_ylabel(f"Reconstruciton eff.@ {args.fpr*100:.1f}%")
     ax_eff_abs.legend(loc="best")
@@ -207,7 +234,7 @@ def main():
     ax_yield_abs.grid(axis="y", linestyle=":", alpha=0.7)
     ax_yield_abs.legend(loc="upper right", fontsize=8, ncol=2)
     fig_abs.tight_layout()
-    out_name_abs = args.out_plot.replace(".png", f"_absolute_FPR{args.fpr*100:.1f}.png")
+    out_name_abs = args.out_plot.replace(".png", f"_absolute.png")
     fig_abs.savefig(out_name_abs, bbox_inches="tight")
     
     plt.close(fig_mat)

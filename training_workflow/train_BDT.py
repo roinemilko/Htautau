@@ -11,7 +11,7 @@ from uproot_fat import load_fatjet_data
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--sig", required=True)
-    parser.add_argument("--bg", nargs='+', required=True, help="One or more background ROOT files")
+    parser.add_argument("--bg", required=True, help="One or more background ROOT files")
     parser.add_argument("--out_model", required=True)
     parser.add_argument("--seed", type=int, default=100)
     parser.add_argument("--num_taus", type=int, default=1, choices=[1, 2], help="Use only leading tau or both")
@@ -28,32 +28,15 @@ def main():
         if args.variables:
             df_sig = load_tau_data(args.sig, label=1, num_taus=args.num_taus, variables=args.variables)
 
-            df_bg  = load_tau_data(args.bg[0], label=0, num_taus=args.num_taus, variables=args.variables)
+            df_bg  = load_tau_data(args.bg, label=0, num_taus=args.num_taus, variables=args.variables)
         else:
             df_sig = load_tau_data(args.sig, label=1, num_taus=args.num_taus)
-            df_bg  = load_tau_data(args.bg[0]   , label=0, num_taus=args.num_taus)
+            df_bg  = load_tau_data(args.bg, label=0, num_taus=args.num_taus)
 
     if args.mode == "AK8" or args.mode == "AK15":
         if args.variables:
             df_sig = load_fatjet_data(args.sig, label=1, jet_type=args.mode, variables=args.variables, use_subjets=args.use_subjets)
-
-            if len(args.bg) > 1:
-                df_bg = load_mixed_fatjet_data(
-                    paths=args.bg, 
-                    label=0, 
-                    jet_type=args.mode, 
-                    use_subjets=args.use_subjets, 
-                    variables=load_vars
-                )
-            else:
-                df_bg = load_fatjet_data(
-                file_path=args.bg[0], 
-                label=0, 
-                jet_type=args.mode, 
-                use_subjets=args.use_subjets, 
-                variables=load_vars
-            )
-        # TODO: implement this (check if this if statement even needed anymore)
+            df_bg = load_fatjet_data(args.sig, label=0, jet_type=args.mode, variables=args.variables, use_subjets=args.use_subjets)
         else:
             df_sig = load_fatjet_data(args.sig, label=1, jet_type=args.mode, use_subjets=args.use_subjets)
             df_bg  = load_fatjet_data(args.bg, label=0, jet_type=args.mode, use_subjets=args.use_subjets)

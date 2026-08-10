@@ -245,37 +245,6 @@ def main():
     eval_df["ref_pt"] = eval_df[pt_cols].mean(axis=1)
     print(f"Final common test set size: {len(eval_df)} events.")
 
-    if num_models > 1:
-        print("Making reconstructed pT difference plot...")
-        eval_df["max_pt_diff"] = eval_df[pt_cols].max(axis=1) - eval_df[pt_cols].min(axis=1)
-        
-        fig_pt, ax_pt = plt.subplots(figsize=(8, 6), dpi=150)
-        bins_pt = np.linspace(0, 300, 60)
-        
-        ax_pt.hist(
-            eval_df[eval_df["label"] == 1]["max_pt_diff"], 
-            weights=eval_df[eval_df["label"] == 1]["weight"],
-            bins=bins_pt, histtype="step", color="blue", label="Signal", linewidth=2
-        )
-        ax_pt.hist(
-            eval_df[eval_df["label"] == 0]["max_pt_diff"], 
-            weights=eval_df[eval_df["label"] == 0]["weight"],
-            bins=bins_pt, histtype="step", color="red", label="Background", linewidth=2
-        )
-        
-        ax_pt.set_xlabel(r"Maximum $\Delta p_T$ between models [GeV]")
-        y_label_pt = "Expected Yield" if args.use_weights else "Events"
-        ax_pt.set_ylabel(y_label_pt)
-        ax_pt.legend(loc="best")
-        hep.cms.label("Work in Progress", data=False, rlabel=r"$H \to \tau\tau$ (125 GeV)", ax=ax_pt, loc=0, fontsize=14)
-        
-        out_pt_plot = args.out_plot.replace(".png", "_pt_diff.png")
-        fig_pt.tight_layout()
-        fig_pt.savefig(out_pt_plot, bbox_inches="tight")
-        plt.close(fig_pt)
-        print(f"saved to {out_pt_plot}")
-
-
     pt_bins = [
         200, 250, 300, 350, 400, 450, 500, 550, 600, 650, 700,
         750, 800, 850, 900, 950, 1000, 1100, 1200,
@@ -444,9 +413,9 @@ def main():
                 sig_effs[j].append(eff)
                 sig_errs[j].append(err)
 
-    fig_eff, (ax_eff, ax_yield_eff) = plt.subplots(
-        2, 1, figsize=(8, 8), sharex=True,
-        gridspec_kw={"height_ratios": [3, 1]}, dpi=150,
+    fig_eff, (ax_eff, ax_eff_rat, ax_yield_eff) = plt.subplots(
+        3, 1, figsize=(8, 8), sharex=True,
+        gridspec_kw={"height_ratios": [3, 1, 1]}, dpi=150,
     )
 
     for j in range(num_models):
@@ -460,6 +429,26 @@ def main():
             capsize=3,
             label=f"{args.names[j]} (Cut: {thresholds[j]:.3f})",
         )
+
+        if j != 0:
+            eff_j = np.array(sig_effs[j])
+            eff_0 = np.array(sig_effs[0])
+            err_j = np.array(sig_errs[j])
+            err_0 = np.array(sig_errs[0])
+
+            with np.errstate(divide='ignore', invalid='ignore'):
+                y_ratio = eff_j / eff_0
+                y_err_ratio = y_ratio * np.sqrt((err_j / eff_j)**2 + (err_0 / eff_0)**2)
+
+            ax_eff_rat.errorbar(
+                    bin_centers,
+                    y_ratio,
+                    xerr=x_err,
+                    yerr=y_err_ratio,
+                    fmt=f"{markers[j % len(markers)]}-",
+                    color=colors[j % len(colors)],
+                    capsize=3,
+                )
         
     br = 1.0 / args.fpr
     br_str = f"{br:.0e}"
@@ -473,6 +462,13 @@ def main():
         "Work in Progress", data=False, rlabel=r"$H \to \tau\tau$ (125 GeV)",
         ax=ax_eff, loc=0, fontsize=14,
     )
+
+    
+    ax_eff_rat.axhline(1.0, color="black", linestyle="--", alpha=0.5)
+    
+    ax_eff_rat.set_ylabel(f"/{args.names[0]}") 
+    ax_eff_rat.grid(axis="y", linestyle=":", alpha=0.7)
+    ax_eff_rat.grid(axis="x", linestyle=":", alpha=0.7)
 
     ax_yield_eff.bar(bin_centers, n_sig_list_eff, width=bin_widths, alpha=0.5, label="Signal intersection", color="blue")
     ax_yield_eff.set_yscale("log")

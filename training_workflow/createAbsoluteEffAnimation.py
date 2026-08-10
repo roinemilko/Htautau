@@ -4,9 +4,11 @@ import numpy as np
 import xgboost as xgb
 import mplhep as hep
 import matplotlib.pyplot as plt
+import matplotlib.animation as animation
 from sklearn.metrics import roc_curve
 import sys
 import uproot
+import gc
 from uproot_fat import load_fatjet_data
 from uproot_data import load_tau_data
 
@@ -38,20 +40,20 @@ def get_threshold(y_true, y_pred, target_fpr):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Absolute Signal Efficiency Evaluation of Multiple Models")
+    parser = argparse.ArgumentParser(description="Animate Absolute Signal Efficiency")
     parser.add_argument("--sigs", nargs="+", required=True, help="Signal ROOT file per model/mode")
     parser.add_argument("--bgs", nargs="+", required=True, help="Background ROOT file per model/mode")
     parser.add_argument("--models", nargs="+", required=True, help="Paths to trained XGBoost models")
     parser.add_argument("--modes", nargs="+", required=True, choices=["Tau", "AK8", "AK15"])
     parser.add_argument("--names", nargs="+", required=True, help="Labels for the plot legend")
-    parser.add_argument("--out_plot", required=True, help="Output path for Absolute Sig. Eff. plot")
+    parser.add_argument("--out_plot", required=True, help="Output path")
     parser.add_argument("--raw_sig", required=True, help="Path to RawEventInfo.root for Signal")
-    parser.add_argument("--raw_bg", required=True, help="Path to RawEventInfo.root for Background")
+    parser.add_argument("--raw_bg", required=False, help="Path to RawEventInfo.root for Background (Optional)")
     parser.add_argument("--seed", type=int, default=100)
     parser.add_argument("--num_taus", type=int, default=2)
     parser.add_argument("--use_subjets", action="store_true")
-    parser.add_argument("--fpr", type=float, default=0.01, help="Target Background False Positive Rate")
-    parser.add_argument("--use_all", action="store_true", help="Evaluate on all common events (skip 50/50 holdout)")
+    parser.add_argument("--use_all", action="store_true", help="Evaluate on all common events")
+    parser.add_argument("--frames", type=int, default=50, help="Number of frames for the animation")
     args = parser.parse_args()
 
     if not (len(args.sigs) == len(args.bgs) == len(args.models) == len(args.modes) == len(args.names)):
@@ -69,12 +71,14 @@ def main():
     test_sig_mask = (raw_sig_evts % 2 == 1) if not args.use_all else np.ones_like(raw_sig_evts, dtype=bool)
     global_sig_evts = raw_sig_evts[test_sig_mask]
     global_sig_pt = raw_sig_pt[test_sig_mask]
+    del raw_sig_evts, raw_sig_pt, test_sig_mask
 
     with uproot.open(f"{args.raw_bg}:Events") as raw_tree:
         raw_bg_evts = raw_tree["event"].array(library="np")
 
     test_bg_mask = (raw_bg_evts % 2 == 1) if not args.use_all else np.ones_like(raw_bg_evts, dtype=bool)
     global_bg_evts = raw_bg_evts[test_bg_mask]
+    del raw_bg_evts, test_bg_mask
 
     loaded_data = []
 
@@ -112,17 +116,19 @@ def main():
         d_bg = xgb.DMatrix(X_bg, missing=np.inf)
         df_bg[f"pred_{i}"] = bst.predict(d_bg)
 
+        # Drop massive feature arrays before appending
+        df_sig = df_sig[[f"pred_{i}"]]
+        df_bg = df_bg[[f"pred_{i}"]]
+        
         loaded_data.append({"sig": df_sig, "bg": df_bg})
-
+        
+        del X_sig, d_sig, X_bg, d_bg, df_sig, df_bg, bst
+        gc.collect()
 
     print("Mapping predictions to global event pool...")
     eval_sig = pd.DataFrame(index=global_sig_evts)
-    eval_sig['label'] = 1
     eval_sig['genH_pt'] = global_sig_pt
-
     eval_bg = pd.DataFrame(index=global_bg_evts)
-    eval_bg['label'] = 0
-    eval_bg['genH_pt'] = np.nan
 
     for i in range(num_models):
         eval_sig[f"pred_{i}"] = -1.0
@@ -137,82 +143,118 @@ def main():
         eval_sig.loc[valid_sig, f"pred_{i}"] = reco_sig.loc[valid_sig, f"pred_{i}"]
         eval_bg.loc[valid_bg, f"pred_{i}"] = reco_bg.loc[valid_bg, f"pred_{i}"]
 
-    eval_df = pd.concat([eval_sig, eval_bg], ignore_index=True)
+    del loaded_data
+    gc.collect()
 
     colors = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd"]
     markers = ["o", "s", "^", "D", "v"]
     
-    print("Calculating thresholds...")
-    thresholds = {}
-    y_true = eval_df["label"].values
-    
-    for i in range(num_models):
-        y_pred = eval_df[f"pred_{i}"].values
-        thresholds[i] = get_threshold(y_true, y_pred, args.fpr)
 
-    print("Generating Total Efficiency plot...")
+    print("calculating thresholds for all frames...")
+    
+    br_values = np.logspace(2, 7, num=args.frames)
+    fpr_values = 1.0 / br_values
+    
+    thresholds_per_frame = []
+    
+    y_true_sig = np.ones(len(eval_sig))
+    y_true_bg = np.zeros(len(eval_bg))
+    y_true = np.concatenate([y_true_sig, y_true_bg])
+    
+    for frame_idx in range(args.frames):
+        current_fpr = fpr_values[frame_idx]
+        frame_thresholds = {}
+        for i in range(num_models):
+            y_pred_sig = eval_sig[f"pred_{i}"].values
+            y_pred_bg = eval_bg[f"pred_{i}"].values
+            y_pred = np.concatenate([y_pred_sig, y_pred_bg])
+            
+            frame_thresholds[i] = get_threshold(y_true, y_pred, current_fpr)
+        thresholds_per_frame.append(frame_thresholds)
+
+    # Completely wipe background from RAM now that we have the cuts!
+    del eval_bg, y_true, y_true_sig, y_true_bg
+    gc.collect()
+    
+
+    print("Setting up animation...")
     pt_bins = [200, 250, 300, 350, 400, 450, 500, 550, 600, 650, 700, 750, 800, 850, 900, 950, 1000, 1100, 1200]
     bin_centers = [(pt_bins[i] + pt_bins[i + 1]) / 2.0 for i in range(len(pt_bins) - 1)]
     bin_widths = [pt_bins[i + 1] - pt_bins[i] for i in range(len(pt_bins) - 1)]
     x_err = [bin_centers[i] - pt_bins[i] for i in range(len(bin_centers))]
     
-    sig_df = eval_df[eval_df["label"] == 1]
+    sig_df = eval_sig
+    
     n_sig_gen_list = []
+    for i in range(len(pt_bins) - 1):
+        pt_min, pt_max = pt_bins[i], pt_bins[i + 1]
+        mask = (sig_df["genH_pt"] >= pt_min) & (sig_df["genH_pt"] < pt_max)
+        n_sig_gen_list.append(len(sig_df[mask]))
 
     fig_eff, (ax_eff, ax_yield_eff) = plt.subplots(
         2, 1, figsize=(8, 8), sharex=True, gridspec_kw={"height_ratios": [3, 1]}, dpi=150
     )
 
-    for j in range(num_models):
-        sig_effs, sig_errs = [], []
-        for i in range(len(pt_bins) - 1):
-            pt_min, pt_max = pt_bins[i], pt_bins[i + 1]
-            mask = (sig_df["genH_pt"] >= pt_min) & (sig_df["genH_pt"] < pt_max)
-            bin_sig = sig_df[mask]
-            
-            n_generated = len(bin_sig)
-            
-            if j == 0:
-                n_sig_gen_list.append(n_generated)
-
-            if n_generated < 50:
-                sig_effs.append(np.nan)
-                sig_errs.append(np.nan)
-            else:
-                n_passing = np.sum(bin_sig[f"pred_{j}"] > thresholds[j])
-                eff = n_passing / n_generated
-                err = np.sqrt(eff * (1 - eff) / n_generated)
-                
-                sig_effs.append(eff)
-                sig_errs.append(err)
-
-        ax_eff.errorbar(
-            bin_centers, sig_effs, xerr=x_err, yerr=sig_errs,
-            fmt=f"{markers[j % len(markers)]}-", color=colors[j % len(colors)],
-            capsize=3, label=f"{args.names[j]} (Cut: {thresholds[j]:.3f})",
-        )
-
     ax_yield_eff.bar(bin_centers, n_sig_gen_list, width=bin_widths, alpha=0.2, color="black", label="Total Generated")
-    
-    br = 1.0 / args.fpr
-    br_str = f"{br:.0e}"
-
-    ax_eff.set_ylabel(f"Total Eff.")
-    ax_eff.legend(loc="best", title=f"Background Rejection {br_str}", title_fontsize=14)
-    ax_eff.grid(axis="y", which="major", linestyle="-", alpha=0.7)
-    ax_eff.grid(axis="y", which="minor", linestyle=":", alpha=0.4)
-    ax_eff.grid(axis="x", linestyle=":", alpha=0.7)
-    hep.cms.label("Work in Progress", data=False, rlabel=r"$H \to \tau\tau$ + $tt \to qqqq$", ax=ax_eff, loc=0, fontsize=14)
-    
     ax_yield_eff.set_xlabel(r"Higgs $p_T$ [GeV]")
     ax_yield_eff.set_ylabel("Events")
     ax_yield_eff.grid(axis="y", linestyle=":", alpha=0.7)
     ax_yield_eff.legend(loc="upper right", fontsize=10)
     
     fig_eff.tight_layout()
-    fig_eff.savefig(args.out_plot, bbox_inches="tight")
+
+    def update(frame_idx):
+        ax_eff.clear()
+        
+        current_br = br_values[frame_idx]
+        current_thresholds = thresholds_per_frame[frame_idx]
+        
+        exp = int(np.floor(np.log10(current_br)))
+        mantissa = current_br / (10**exp)
+        if abs(mantissa - 1.0) < 1e-5:
+            br_str = f"$10^{{{exp}}}$"
+        else:
+            br_str = f"${mantissa:.1f} \\times 10^{{{exp}}}$"
+
+        for j in range(num_models):
+            sig_effs, sig_errs = [], []
+            for i in range(len(pt_bins) - 1):
+                pt_min, pt_max = pt_bins[i], pt_bins[i + 1]
+                mask = (sig_df["genH_pt"] >= pt_min) & (sig_df["genH_pt"] < pt_max)
+                bin_sig = sig_df[mask]
+                n_generated = len(bin_sig)
+
+                if n_generated < 50:
+                    sig_effs.append(np.nan)
+                    sig_errs.append(np.nan)
+                else:
+                    n_passing = np.sum(bin_sig[f"pred_{j}"] > current_thresholds[j])
+                    eff = n_passing / n_generated
+                    err = np.sqrt(eff * (1 - eff) / n_generated)
+                    sig_effs.append(eff)
+                    sig_errs.append(err)
+
+            ax_eff.errorbar(
+                bin_centers, sig_effs, xerr=x_err, yerr=sig_errs,
+                fmt=f"{markers[j % len(markers)]}-", color=colors[j % len(colors)],
+                capsize=3, label=f"{args.names[j]} (Cut: {current_thresholds[j]:.3f})",
+            )
+
+        ax_eff.set_ylim([0.0, 1.05])
+        ax_eff.set_ylabel("Total Eff.")
+        ax_eff.legend(loc="lower right", title=f"Background Rejection = {br_str}", title_fontsize=14)
+        ax_eff.grid(axis="y", which="major", linestyle="-", alpha=0.7)
+        ax_eff.grid(axis="y", which="minor", linestyle=":", alpha=0.4)
+        ax_eff.grid(axis="x", linestyle=":", alpha=0.7)
+        hep.cms.label("Work in Progress", data=False, rlabel=r"$H \to \tau\tau$ + $tt \to qqqq$", ax=ax_eff, loc=0, fontsize=14)
+
+    print(f"Animating {args.frames} frames...")
+    anim = animation.FuncAnimation(fig_eff, update, frames=args.frames, interval=200)
+    
+    anim.save(args.out_plot, writer='pillow', fps=5)
+    print(f"Animation saved to {args.out_plot}")
+
     plt.close(fig_eff)
-    print(f"Absolute Efficiency plot saved to {args.out_plot}")
 
 if __name__ == "__main__":
     main()

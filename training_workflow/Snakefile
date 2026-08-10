@@ -121,15 +121,19 @@ def get_model_file(mode):
     sig_name = MODE_TO_SIG[mode]
     m_str = mode_str(mode)
 
+    r_id = run_id_for_mode(mode)
+    new_path = f"results/bdt_{r_id}.json"
     standard_path = f"results/bdt_{sig_name}_{SIG_GENERATOR}_vs_{BG_NAME}_{m_str}_seed{SEED}{VAR_SUFFIX}.json"
     legacy_path = f"results/bdt_{sig_name}_vs_{BG_NAME}_{m_str}_seed{SEED}{VAR_SUFFIX}.json"
 
     if os.path.exists(standard_path):
         return standard_path
+    elif os.path.exists(new_path):
+        return new_path
     elif os.path.exists(legacy_path):
         return legacy_path
         
-    return standard_path
+    return new_path
 
 comp_sub_str = "wSubjets" if USE_SUBJETS else "noSubjets"
 COMPARE_ID = (
@@ -286,10 +290,10 @@ rule run_compare_bdts:
         """
 
 
-rule compare_tagging_eff:
+rule compare_tagging_effs:
     input:
-        expand(f"results/tagging_eff_compare_{COMPARE_ID}_matched_FPR{{fpr_str}}.png", fpr_str=FPR_STRS),
-        expand(f"results/tagging_eff_compare_{COMPARE_ID}_absolute_FPR{{fpr_str}}.png", fpr_str=FPR_STRS)
+        expand(f"results/tagging_eff_compare_{COMPARE_ID}_FPR{{fpr_str}}_matched.png", fpr_str=FPR_STRS),
+        expand(f"results/tagging_eff_compare_{COMPARE_ID}_FPR{{fpr_str}}_absolute.png", fpr_str=FPR_STRS)
 
 rule run_compare_tagging_eff:
     input:
@@ -298,15 +302,15 @@ rule run_compare_tagging_eff:
         bgs = [bg_path_for_mode(m) for m in COMPARE_MODES],
         raw_sig = "/eos/user/m/mroine/NanoTuples/Htautau/data_workflow/jets/MADGRAPH/RawEventInfo_hadhad.root"
     output:
-        plot_matched = f"results/tagging_eff_compare_{COMPARE_ID}_matched_FPR{{fpr_str}}.png",
-        plot_absolute = f"results/tagging_eff_compare_{COMPARE_ID}_absolute_FPR{{fpr_str}}.png"
+        matched = f"results/tagging_eff_compare_{COMPARE_ID}_FPR{{fpr_str}}_matched.png",
+        absolute = f"results/tagging_eff_compare_{COMPARE_ID}_FPR{{fpr_str}}_absolute.png"
     params:
         modes = COMPARE_MODES,
         names = COMPARE_NAMES,
         num_taus = NUM_TAUS,
         subjet_flag = SUBJET_FLAG,
         seed = SEED,
-        base_plot_name = f"results/tagging_eff_compare_{COMPARE_ID}.png",
+        base_plot_name = f"results/tagging_eff_compare_{COMPARE_ID}_FPR{{fpr_str}}.png",
         fpr = lambda wildcards: float(wildcards.fpr_str) / 100.0
     shell:
         """
@@ -328,7 +332,8 @@ rule absolute_evaluation:
     input:
         f"results/abs_eval_roc_{COMPARE_ID}.png",
         f"results/abs_eval_rej_{COMPARE_ID}.png",
-        expand(f"results/abs_eval_sigeff_pt_{COMPARE_ID}_FPR{{fpr_str}}.png", fpr_str=FPR_STRS)
+        expand(f"results/abs_eval_sigeff_pt_{COMPARE_ID}_FPR{{fpr_str}}.png", fpr_str=FPR_STRS),
+        f"results/abs_eval_sigeff_pt_{COMPARE_ID}_animation.gif"
 
 rule run_absolute_evaluation_roc:
     input:
@@ -396,6 +401,42 @@ rule run_absolute_evaluation_eff:
             --num_taus {params.num_taus} \
             --seed {params.seed} \
             --fpr {params.fpr} \
+            {params.subjet_flag} \
+            {params.use_all_flag}
+        """
+
+
+rule run_absolute_evaluation_animation:
+    input:
+        models = [get_model_file(m) for m in COMPARE_MODES],
+        sigs = [sig_path_for_mode(m) for m in COMPARE_MODES],
+        bgs = [bg_path_for_mode(m) for m in COMPARE_MODES],
+        raw_sig = f"/eos/user/m/mroine/NanoTuples/Htautau/data_workflow/jets/{SIG_GENERATOR}/RawEventInfo_hadhad.root",
+        raw_bg = f"{BG_BASE_DIR}/{BG_NAME}/RawEventInfoBG_{BG_NAME}.root"
+    output:
+        plot_anim = f"results/abs_eval_sigeff_pt_{COMPARE_ID}_animation.gif"
+    params:
+        modes = COMPARE_MODES,
+        names = COMPARE_NAMES,
+        num_taus = NUM_TAUS,
+        subjet_flag = SUBJET_FLAG,
+        seed = SEED,
+        use_all_flag = USE_ALL_FLAG,
+        frames = 50
+    shell:
+        """
+        python createAbsoluteEffAnimation.py \
+            --sigs {input.sigs} \
+            --bgs {input.bgs} \
+            --models {input.models} \
+            --modes {params.modes} \
+            --names {params.names} \
+            --raw_sig {input.raw_sig} \
+            --raw_bg {input.raw_bg} \
+            --out_plot {output.plot_anim} \
+            --num_taus {params.num_taus} \
+            --seed {params.seed} \
+            --frames {params.frames} \
             {params.subjet_flag} \
             {params.use_all_flag}
         """
