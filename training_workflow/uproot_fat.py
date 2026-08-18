@@ -49,6 +49,8 @@ AK15_VARIABLES = [
 def load_fatjet_data(file_path, label, jet_type="AK8", use_subjets=False, force_rebuild=False, variables=None):
     if variables is None:
         variables = AK8_VARIABLES if jet_type == "AK8" else AK15_VARIABLES
+    if "event" not in variables:
+        variables.append("event")
 
     base_name = os.path.basename(file_path).replace('.root', '')
     parent_dir = os.path.basename(os.path.dirname(file_path))

@@ -12,6 +12,13 @@ import gc
 from uproot_fat import load_fatjet_data
 from uproot_data import load_tau_data
 
+BG_STRING_DICT = {
+    "TTto4Q": r"$tt \to qqqq$",
+    "TTto2L2Nu": r"$tt \to \ell\ell\nu\nu$",
+    "TTtoLNu2Q": r"$tt \to \ell \nu qq$",
+    "DYto2Tau": "DY"
+}
+
 def load_data(sig_path, bg_path, mode, args, variables=None):
     """Caller for data loaders"""
     base_vars = variables if variables is not None else []
@@ -49,6 +56,7 @@ def main():
     parser.add_argument("--out_plot", required=True, help="Output path")
     parser.add_argument("--raw_sig", required=True, help="Path to RawEventInfo.root for Signal")
     parser.add_argument("--raw_bg", required=False, help="Path to RawEventInfo.root for Background (Optional)")
+    parser.add_argument("--bg_mode", required=True, help="Name of the bg mode for plot axes")
     parser.add_argument("--seed", type=int, default=100)
     parser.add_argument("--num_taus", type=int, default=2)
     parser.add_argument("--use_subjets", action="store_true")
@@ -172,7 +180,6 @@ def main():
             frame_thresholds[i] = get_threshold(y_true, y_pred, current_fpr)
         thresholds_per_frame.append(frame_thresholds)
 
-    # Completely wipe background from RAM now that we have the cuts!
     del eval_bg, y_true, y_true_sig, y_true_bg
     gc.collect()
     
@@ -203,9 +210,12 @@ def main():
     
     fig_eff.tight_layout()
 
+
+    effs_per_frame = [[None] * args.frames for _ in range(num_models)]
+    cuts_per_frame = [[None] * args.frames for _ in range(num_models)]
+
     def update(frame_idx):
         ax_eff.clear()
-        
         current_br = br_values[frame_idx]
         current_thresholds = thresholds_per_frame[frame_idx]
         
@@ -234,11 +244,32 @@ def main():
                     sig_effs.append(eff)
                     sig_errs.append(err)
 
+            effs_per_frame[j][frame_idx] = sig_effs
+            
+            cut = current_thresholds[j]
+            cuts_per_frame[j][frame_idx] = cut
+
+            cut_str = None
+            
+            if cut > 0.999:
+                cut_inv = 1 - current_thresholds[j]
+                exp = int(np.floor(np.log10(cut_inv)))
+                mantissa = cut_inv / (10**exp)
+                if abs(mantissa - 1.0) < 1e-5:
+                    cut_inv_str = f"$10^{{{exp}}}$"
+                else:
+                    cut_inv_str = f"${mantissa:.1f} \\times 10^{{{exp}}}$"
+                cut_str = f"1 - {cut_inv_str}"
+            else:
+                cut_str = f"{cut:.3}"
+
             ax_eff.errorbar(
                 bin_centers, sig_effs, xerr=x_err, yerr=sig_errs,
                 fmt=f"{markers[j % len(markers)]}-", color=colors[j % len(colors)],
-                capsize=3, label=f"{args.names[j]} (Cut: {current_thresholds[j]:.3f})",
+                capsize=3, label=f"{args.names[j]} (Cut: {cut_str})",
             )
+
+
 
         ax_eff.set_ylim([0.0, 1.05])
         ax_eff.set_ylabel("Total Eff.")
@@ -246,7 +277,7 @@ def main():
         ax_eff.grid(axis="y", which="major", linestyle="-", alpha=0.7)
         ax_eff.grid(axis="y", which="minor", linestyle=":", alpha=0.4)
         ax_eff.grid(axis="x", linestyle=":", alpha=0.7)
-        hep.cms.label("Work in Progress", data=False, rlabel=r"$H \to \tau\tau$ + $tt \to qqqq$", ax=ax_eff, loc=0, fontsize=14)
+        hep.cms.label("Work in Progress", data=False, rlabel=rf"$H \to \tau\tau$ + {BG_STRING_DICT[args.bg_mode]}", ax=ax_eff, loc=0, fontsize=14)
 
     print(f"Animating {args.frames} frames...")
     anim = animation.FuncAnimation(fig_eff, update, frames=args.frames, interval=200)
@@ -255,6 +286,98 @@ def main():
     print(f"Animation saved to {args.out_plot}")
 
     plt.close(fig_eff)
+
+
+    if "AK15" not in args.modes:
+        print("'AK15' is not in the provided modes. Skipping crossover plot.")
+    elif len(args.modes) < 2:
+        print("Notice: No other modes provided to compare AK15 against. Skipping crossover plot.")
+    else:
+        idx_ak15 = args.modes.index("AK15")
+        competitor_indices = [i for i, mode in enumerate(args.modes) if mode != "AK15"]
+
+        crossover_pts_dict = {c: [] for c in competitor_indices}
+        crossover_errs_dict = {c: [] for c in competitor_indices}
+
+        num_bins = len(bin_centers)
+
+        for frame_idx in range(args.frames):
+            
+            for c in competitor_indices: 
+                crossover = np.nan
+                crossover_err = np.nan
+                comp_mode = args.modes[c]
+
+                for b in range(num_bins):
+                    eff_ak15 = effs_per_frame[idx_ak15][frame_idx][b]
+                    ec = effs_per_frame[c][frame_idx][b]
+                    
+                    if not (np.isnan(eff_ak15) or np.isnan(ec)):
+
+                        if comp_mode == "AK8":
+                            condition_met = ec > eff_ak15
+                        else:
+                            condition_met = eff_ak15 > ec
+
+                        if condition_met:
+                            if b < num_bins - 1:
+                                eff_ak15_next = effs_per_frame[idx_ak15][frame_idx][b+1]
+                                ec_next = effs_per_frame[c][frame_idx][b+1]
+                                
+                                if not (np.isnan(eff_ak15_next) or np.isnan(ec_next)):
+                                    if comp_mode == "AK8":
+                                        condition_next = ec_next > eff_ak15_next
+                                    else:
+                                        condition_next = eff_ak15_next > ec_next
+                                        
+                                    if condition_next:
+                                        crossover = bin_centers[b]
+                                        crossover_err = (pt_bins[b+1] - pt_bins[b]) / 2.0
+                                        break
+                            else:
+                                crossover = bin_centers[b]
+                                crossover_err = (pt_bins[b+1] - pt_bins[b]) / 2.0
+                                break
+
+                crossover_pts_dict[c].append(crossover)
+                crossover_errs_dict[c].append(crossover_err)
+
+        fig_cross, ax_cross = plt.subplots(figsize=(8, 6), dpi=150)
+
+        for c in competitor_indices:
+            comp_name = args.names[c]
+            comp_mode = args.modes[c]
+            c_color = colors[c % len(colors)]
+            c_marker = markers[c % len(markers)]
+            
+            plot_label = f"{comp_name} > AK15" if comp_mode == "AK8" else f"AK15 > {comp_name}"
+
+            ax_cross.errorbar(
+                br_values, 
+                crossover_pts_dict[c], 
+                yerr=crossover_errs_dict[c],
+                marker=c_marker, 
+                color=c_color, 
+                lw=2, 
+                capsize=3,
+                label=plot_label
+            )
+        
+        ax_cross.set_xscale("log")
+        ax_cross.set_xlabel("Background Rejection")
+        ax_cross.set_ylabel(r"Higgs $p_T$ [GeV]")
+        ax_cross.legend(loc="upper left")
+        
+        ax_cross.grid(True, which="major", linestyle="-", alpha=0.7)
+        ax_cross.grid(True, which="minor", linestyle=":", alpha=0.4)
+        hep.cms.label("Work in Progress", data=False, rlabel=rf"$H \to \tau\tau$ + {BG_STRING_DICT[args.bg_mode]}", ax=ax_cross, loc=0, fontsize=14)
+
+        cross_out = args.out_plot.rsplit('.', 1)[0] + "_crossover.png"
+        fig_cross.tight_layout()
+        fig_cross.savefig(cross_out)
+        print(f"Crossover plot saved to {cross_out}")
+        plt.close(fig_cross)
+        
 
 if __name__ == "__main__":
     main()

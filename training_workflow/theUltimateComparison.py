@@ -10,6 +10,14 @@ import uproot
 from uproot_fat import load_fatjet_data
 from uproot_data import load_tau_data
 
+
+BG_STRING_DICT = {
+    "TTto4Q": r"$tt \to qqqq$",
+    "TTto2L2Nu": r"$tt \to \ell\ell\nu\nu$",
+    "TTtoLNu2Q": r"$tt \to \ell \nu qq$",
+    "DYto2Tau": "DY"
+}
+
 def load_data(sig_path, bg_path, mode, args, variables=None):
     """Caller for data loaders"""
     base_vars = variables if variables is not None else []
@@ -42,6 +50,7 @@ def main():
     parser.add_argument("--out_rej_plot", default="results/abs_eval_rejection.png", help="Output path for Background Rejection plot")
     parser.add_argument("--raw_sig", required=True, help="Path to RawEventInfo.root for Signal")
     parser.add_argument("--raw_bg", required=False, help="Path to RawEventInfo.root for Background (Optional)")
+    parser.add_argument("--bg_mode", required=True, help="Name of the bg mode for plot axes")
     parser.add_argument("--seed", type=int, default=100)
     parser.add_argument("--num_taus", type=int, default=2)
     parser.add_argument("--use_subjets", action="store_true")
@@ -179,7 +188,7 @@ def main():
     ax_roc.legend(loc="lower right")
     ax_roc.grid(axis="both", which="major", linestyle="-", alpha=0.7)
     ax_roc.grid(axis="both", which="minor", linestyle=":", alpha=0.4)
-    hep.cms.label("Work in Progress", data=False, rlabel=r"$H \to \tau\tau$ + $tt\to qqqq$", ax=ax_roc, loc=0, fontsize=14)
+    hep.cms.label("Work in Progress", data=False, rlabel=rf"$H \to \tau\tau$ + {BG_STRING_DICT[args.bg_mode]}", ax=ax_roc, loc=0, fontsize=14)
     
     fig_roc.tight_layout()
     fig_roc.savefig(args.out_plot, bbox_inches="tight")
@@ -192,7 +201,7 @@ def main():
     ax_rej.legend(loc="upper right")
     ax_rej.grid(axis="both", which="major", linestyle="-", alpha=0.7)
     ax_rej.grid(axis="both", which="minor", linestyle=":", alpha=0.4)
-    hep.cms.label("Work in Progress", data=False, rlabel=r"$H \to \tau\tau$ + $tt\to qqqq$", ax=ax_rej, loc=0, fontsize=14)
+    hep.cms.label("Work in Progress", data=False, rlabel=rf"$H \to \tau\tau$ + {BG_STRING_DICT[args.bg_mode]}", ax=ax_rej, loc=0, fontsize=14)
 
     fig_rej.tight_layout()
     fig_rej.savefig(args.out_rej_plot, bbox_inches="tight")

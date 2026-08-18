@@ -23,8 +23,6 @@ def main():
     load_vars = list(set(args.variables + ["event"])) if args.variables else None
 
     if args.mode == "Tau":
-
-
         if args.variables:
             df_sig = load_tau_data(args.sig, label=1, num_taus=args.num_taus, variables=args.variables)
 
@@ -36,7 +34,7 @@ def main():
     if args.mode == "AK8" or args.mode == "AK15":
         if args.variables:
             df_sig = load_fatjet_data(args.sig, label=1, jet_type=args.mode, variables=args.variables, use_subjets=args.use_subjets)
-            df_bg = load_fatjet_data(args.sig, label=0, jet_type=args.mode, variables=args.variables, use_subjets=args.use_subjets)
+            df_bg = load_fatjet_data(args.bg, label=0, jet_type=args.mode, variables=args.variables, use_subjets=args.use_subjets)
         else:
             df_sig = load_fatjet_data(args.sig, label=1, jet_type=args.mode, use_subjets=args.use_subjets)
             df_bg  = load_fatjet_data(args.bg, label=0, jet_type=args.mode, use_subjets=args.use_subjets)

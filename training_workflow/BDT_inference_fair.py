@@ -12,15 +12,32 @@ from uproot_data import load_tau_data
 from uproot_fat import load_fatjet_data
 import uproot
 
-# TODO: Update with better values
+BG_STRING_DICT = {
+    "TTto4Q": r"$tt \to qqqq$",
+    "TTto2L2Nu": r"$tt \to \ell\ell\nu\nu$",
+    "TTtoLNu2Q": r"$tt \to \ell \nu qq$",
+    "DYto2Tau": "DY"
+}
+
+# Cross sections in pb for 13 TeV
 XSEC_DICT = {
-    "TTto4Q": 377.96,
-    "TTtoLNu2Q": 365.34,
-    "TTto2L2Nu": 88.29,
-    "DYto2Tau": 6077.22,
-    "VBFHHto2B2Tau": 0.0073,
+    # Backgrounds: NNLO/N3LO Standard Model predictions
+    "TTto4Q": 377.96,         # NNLO+NNLL inclusive ttbar * BR(W->qq)^2
+    "TTtoLNu2Q": 365.34,      # NNLO+NNLL inclusive ttbar * 2*BR(W->qq)*BR(W->lv)
+    "TTto2L2Nu": 88.29,       # NNLO+NNLL inclusive ttbar * BR(W->lv)^2
+    "DYto2Tau": 6077.22,      # NNLO DYJetsToLL M > 50 GeV
+    
+    # Signal: BSM VBF HH (kappa_2V = 0) * BR(HH -> bbtautau)
+    "VBFHHto2B2Tau": 0.00504, 
 }
 LUMI_FB = 137.0
+
+def get_process_name(file_path):
+    """Extracts the process name from the file path."""
+    for key in XSEC_DICT.keys():
+        if key in file_path:
+            return key
+    return os.path.basename(file_path).replace(".root", "")
 
 def get_weight(file_path):
     """Calculates the expected number of events w = (xsec * lumi) / N_gen"""
@@ -89,6 +106,7 @@ def main():
     parser.add_argument("--models", nargs="+", required=True, help="Paths to trained XGBoost models")
     parser.add_argument("--modes", nargs="+", required=True, choices=["Tau", "AK8", "AK15"])
     parser.add_argument("--names", nargs="+", required=True, help="Labels for the plot legend")
+    parser.add_argument("--bg_mode", required=True, help="Name of the bg mode for plot axes")
     parser.add_argument("--out_plot", required=True, help="Output path for AUC vs pT plot")
     parser.add_argument("--out_eff_plot", required=True, help="Output path for sig. eff. plot")
     parser.add_argument("--seed", type=int, default=100)
@@ -344,7 +362,7 @@ def main():
     hep.cms.label(
         "Work in Progress",
         data=False,
-        rlabel=r"$H \to \tau\tau + tt \to qqqq$",
+        rlabel=rf"$H \to \tau\tau$ + {BG_STRING_DICT[args.bg_mode]}",
         ax=ax_auc,
         loc=0,
         fontsize=14,
@@ -419,6 +437,22 @@ def main():
     )
 
     for j in range(num_models):
+
+        cut = thresholds[j]
+        cut_str = None
+        
+        if cut > 0.999:
+            cut_inv = 1 - thresholds[j]
+            exp = int(np.floor(np.log10(cut_inv)))
+            mantissa = cut_inv / (10**exp)
+            if abs(mantissa - 1.0) < 1e-5:
+                cut_inv_str = f"$10^{{{exp}}}$"
+            else:
+                cut_inv_str = f"${mantissa:.1f} \\times 10^{{{exp}}}$"
+            cut_str = f"1 - {cut_inv_str}"
+        else:
+            cut_str = f"{cut:.3}"
+
         ax_eff.errorbar(
             bin_centers,
             sig_effs[j],
@@ -427,7 +461,7 @@ def main():
             fmt=f"{markers[j % len(markers)]}-",
             color=colors[j % len(colors)],
             capsize=3,
-            label=f"{args.names[j]} (Cut: {thresholds[j]:.3f})",
+            label=f"{args.names[j]} (Cut: {cut_str})",
         )
 
         if j != 0:
@@ -459,7 +493,7 @@ def main():
     ax_eff.grid(axis="y", which="minor", linestyle=":", alpha=0.4)
     ax_eff.grid(axis="x", linestyle=":", alpha=0.7)
     hep.cms.label(
-        "Work in Progress", data=False, rlabel=r"$H \to \tau\tau$ (125 GeV)",
+        "Work in Progress", data=False, rlabel=rf"$H \to \tau\tau$ + {BG_STRING_DICT[args.bg_mode]}",
         ax=ax_eff, loc=0, fontsize=14,
     )
 

@@ -10,6 +10,13 @@ from uproot_fat import load_fatjet_data
 from uproot_data import load_tau_data
 import uproot
 
+BG_STRING_DICT = {
+    "TTto4Q": r"$tt \to qqqq$",
+    "TTto2L2Nu": r"$tt \to \ell\ell\nu\nu$",
+    "TTtoLNu2Q": r"$tt \to \ell \nu qq$",
+    "DYto2Tau": "DY"
+}
+
 def load_data(sig_path, bg_path, mode, args, variables=None):
 
     base_vars = variables if variables is not None else []
@@ -34,6 +41,7 @@ def main():
     parser = argparse.ArgumentParser(description="Tagging Efficiency vs True Higgs pT")
     parser.add_argument("--sigs", nargs="+", required=True)
     parser.add_argument("--bgs", nargs="+", required=True)
+    parser.add_argument("--bg_mode", required=True, help="Name of the bg mode for plot axes")
     parser.add_argument("--models", nargs="+", required=True)
     parser.add_argument("--modes", nargs="+", required=True, choices=["Tau", "AK8", "AK15"])
     parser.add_argument("--names", nargs="+", required=True)
@@ -152,16 +160,32 @@ def main():
             
         all_sig_yields_mat.append(n_sig_list_mat)
 
+
+        cut = threshold
+        cut_str = None
+        
+        if cut > 0.999:
+            cut_inv = 1 - threshold
+            exp = int(np.floor(np.log10(cut_inv)))
+            mantissa = cut_inv / (10**exp)
+            if abs(mantissa - 1.0) < 1e-5:
+                cut_inv_str = f"$10^{{{exp}}}$"
+            else:
+                cut_inv_str = f"${mantissa:.1f} \\times 10^{{{exp}}}$"
+            cut_str = f"1 - {cut_inv_str}"
+        else:
+            cut_str = f"{cut:.3}"
+
         ax_eff_mat.errorbar(
             bin_centers, sig_effs_mat, xerr=x_err, yerr=sig_errs_mat,
             fmt=f"{markers[j % len(markers)]}-", color=colors[j % len(colors)],
-            capsize=3, label=f"{args.names[j]} (Cut: {threshold:.3f})",
+            capsize=3, label=f"{args.names[j]} (Cut: {cut_str})",
         )
         
         ax_eff_abs.errorbar(
             bin_centers, sig_effs_abs, xerr=x_err, yerr=sig_errs_abs,
             fmt=f"{markers[j % len(markers)]}-", color=colors[j % len(colors)],
-            capsize=3, label=f"{args.names[j]} (Cut: {threshold:.3f})",
+            capsize=3, label=f"{args.names[j]} (Cut: {cut_str})",
         )
 
         effs_arr = np.array(sig_effs_mat)
@@ -207,7 +231,7 @@ def main():
     ax_eff_mat.grid(axis="y", which="major", linestyle="-", alpha=0.7)
     ax_eff_mat.grid(axis="y", which="minor", linestyle=":", alpha=0.4)
     ax_eff_mat.grid(axis="x", linestyle=":", alpha=0.7)
-    hep.cms.label("Work in Progress", data=False, rlabel=r"$H \to \tau\tau$ (125 GeV)", ax=ax_eff_mat, loc=0, fontsize=14)
+    hep.cms.label("Work in Progress", data=False, rlabel=rf"$H \to \tau\tau$ + {BG_STRING_DICT[args.bg_mode]}", ax=ax_eff_mat, loc=0, fontsize=14)
 
     ax_ratio_mat.set_ylabel(f"/{args.modes[0]}")
     ax_ratio_mat.grid(axis="y", which="major", linestyle="-", alpha=0.7)
@@ -227,7 +251,7 @@ def main():
     ax_eff_abs.grid(axis="y", which="major", linestyle="-", alpha=0.7)
     ax_eff_abs.grid(axis="y", which="minor", linestyle=":", alpha=0.4)
     ax_eff_abs.grid(axis="x", linestyle=":", alpha=0.7)
-    hep.cms.label("Work in Progress", data=False, rlabel=r"$H \to \tau\tau$ (125 GeV)", ax=ax_eff_abs, loc=0, fontsize=14)
+    hep.cms.label("Work in Progress", data=False, rlabel=rf"$H \to \tau\tau$ + {BG_STRING_DICT[args.bg_mode]}", ax=ax_eff_abs, loc=0, fontsize=14)
     ax_yield_abs.set_yscale("log")
     ax_yield_abs.set_xlabel(r"Higgs $p_T$ [GeV]")
     ax_yield_abs.set_ylabel("Events")

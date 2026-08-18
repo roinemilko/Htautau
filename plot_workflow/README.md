@@ -24,8 +24,8 @@ The analyses can be customized with these flags:
 |data="MADGRAPH, POWHEG"|Specify what data to process. Add paths to own datasets to DATA_DIRS dictionary in the top of Snakefile.
 |channel="both"|Specify decay channels: "hadhad_only", "inclusive_only"
 | exclude="" | Run process excluding some jet types, e.g. "AK4, Tau" |
-|jet-params="X_mass, X_pt, X_mass/X_pt, abs(X_eta)"| Properties the distribution of which will be plotted in jet_plots. X to replace jet type in skim format.
-|subjet-params="X_Subjet_mass, X_Subjet_pt, X_Subjet_mass/X_Subjet_pt, abs(X_Subjet_eta)"|Same as above but for the AK8 and AK15 subjet properties.
+|jet-params="XX_mass, XX_pt, XX_mass/XX_pt, abs(XX_eta)"| Properties the distribution of which will be plotted in jet_plots. XX to replace jet type in skim format.
+|subjet-params="XX_Subjet_mass, XX_Subjet_pt, XX_Subjet_mass/XX_Subjet_pt, abs(XX_Subjet_eta)"|Same as above but for the AK8 and AK15 subjet properties.
 
 </center>
 

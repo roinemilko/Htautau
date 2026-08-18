@@ -10,6 +10,14 @@ import uproot
 from uproot_fat import load_fatjet_data
 from uproot_data import load_tau_data
 
+
+BG_STRING_DICT = {
+    "TTto4Q": r"$tt \to qqqq$",
+    "TTto2L2Nu": r"$tt \to \ell\ell\nu\nu$",
+    "TTtoLNu2Q": r"$tt \to \ell \nu qq$",
+    "DYto2Tau": "DY"
+}
+
 def load_data(sig_path, bg_path, mode, args, variables=None):
     """Caller for data loaders"""
     base_vars = variables if variables is not None else []
@@ -47,6 +55,7 @@ def main():
     parser.add_argument("--out_plot", required=True, help="Output path for Absolute Sig. Eff. plot")
     parser.add_argument("--raw_sig", required=True, help="Path to RawEventInfo.root for Signal")
     parser.add_argument("--raw_bg", required=True, help="Path to RawEventInfo.root for Background")
+    parser.add_argument("--bg_mode", required=True, help="Name of the bg mode for plot axes")
     parser.add_argument("--seed", type=int, default=100)
     parser.add_argument("--num_taus", type=int, default=2)
     parser.add_argument("--use_subjets", action="store_true")
@@ -186,10 +195,26 @@ def main():
                 sig_effs.append(eff)
                 sig_errs.append(err)
 
+
+        cut = thresholds[j]
+        cut_str = None
+        
+        if cut > 0.999:
+            cut_inv = 1 - thresholds[j]
+            exp = int(np.floor(np.log10(cut_inv)))
+            mantissa = cut_inv / (10**exp)
+            if abs(mantissa - 1.0) < 1e-5:
+                cut_inv_str = f"$10^{{{exp}}}$"
+            else:
+                cut_inv_str = f"${mantissa:.1f} \\times 10^{{{exp}}}$"
+            cut_str = f"1 - {cut_inv_str}"
+        else:
+            cut_str = f"{cut:.3}"
+
         ax_eff.errorbar(
             bin_centers, sig_effs, xerr=x_err, yerr=sig_errs,
             fmt=f"{markers[j % len(markers)]}-", color=colors[j % len(colors)],
-            capsize=3, label=f"{args.names[j]} (Cut: {thresholds[j]:.3f})",
+            capsize=3, label=f"{args.names[j]} (Cut: {cut_str})",
         )
 
     ax_yield_eff.bar(bin_centers, n_sig_gen_list, width=bin_widths, alpha=0.2, color="black", label="Total Generated")
@@ -197,12 +222,15 @@ def main():
     br = 1.0 / args.fpr
     br_str = f"{br:.0e}"
 
+
+
+
     ax_eff.set_ylabel(f"Total Eff.")
     ax_eff.legend(loc="best", title=f"Background Rejection {br_str}", title_fontsize=14)
     ax_eff.grid(axis="y", which="major", linestyle="-", alpha=0.7)
     ax_eff.grid(axis="y", which="minor", linestyle=":", alpha=0.4)
     ax_eff.grid(axis="x", linestyle=":", alpha=0.7)
-    hep.cms.label("Work in Progress", data=False, rlabel=r"$H \to \tau\tau$ + $tt \to qqqq$", ax=ax_eff, loc=0, fontsize=14)
+    hep.cms.label("Work in Progress", data=False, rlabel=rf"$H \to \tau\tau$ + {BG_STRING_DICT[args.bg_mode]}", ax=ax_eff, loc=0, fontsize=14)
     
     ax_yield_eff.set_xlabel(r"Higgs $p_T$ [GeV]")
     ax_yield_eff.set_ylabel("Events")

@@ -23,6 +23,8 @@ def load_tau_data(file_path, label, num_taus=1, force_rebuild = False,
             "tau_probDM10UParT", "tau_probDM11UParT", "tau_ptCorrUParT", "tau_qConfUParT",
             "tau_rawUParTVSe", "tau_rawUParTVSjet", "tau_rawUParTVSmu", "event"
         ]
+    if "event" not in variables:
+        variables.append("event")
 
     variables = sorted(variables)
     base_name = os.path.basename(file_path).replace('.root', '')
@@ -99,3 +101,4 @@ def load_tau_data(file_path, label, num_taus=1, force_rebuild = False,
     os.makedirs(os.path.dirname(cache_file), exist_ok=True)
     df.to_parquet(cache_file)
     return df
+
