@@ -25,15 +25,23 @@ void BuildBg(
     }
 
     gSystem->mkdir(save_directory, true);
-    ROOT::RDataFrame df("Events", file_pattern);
-    ROOT::RDF::RNode df_Tau = df;
-    ROOT::RDF::RNode df_AK4 = df;
-    ROOT::RDF::RNode df_AK8 = df;
-    ROOT::RDF::RNode df_AK15 = df;
+
+    TChain chain("Events");
+    chain.Add(file_pattern);
+    ULong64_t n_raw = chain.GetEntries();
+
+    ROOT::RDataFrame df(chain);
+    auto df_wRaw = df.Define("NRawEvents", [n_raw]() {return n_raw;});
+
+    ROOT::RDF::RNode df_Tau = df_wRaw;
+    ROOT::RDF::RNode df_AK4 = df_wRaw;
+    ROOT::RDF::RNode df_AK8 = df_wRaw;
+    ROOT::RDF::RNode df_AK15 = df_wRaw;
+
 
 
     if (include_Tau) {
-        df_Tau = df
+        df_Tau = df_wRaw
         .Filter("nTau >= 2", "Require at least two taus")
         .Define("BestTaus", "GetHighestTauScorePair(Tau_rawPNetVSjet, Tau_pt)")
         .Define("BestTau_1", "BestTaus[0]")
@@ -93,7 +101,7 @@ void BuildBg(
     }
 
     if (include_AK8) {
-        df_AK8 = df
+        df_AK8 = df_wRaw
             .Filter("nFatJet >= 1", "Require at least one fatJet")
             .Define("FatJet_tautau_Score", "FatJet_globalParT3_Xtauhtauh / (FatJet_globalParT3_Xtauhtauh + FatJet_globalParT3_QCD)")
             .Define("BestFatJetIdx", "GetHighestTauScore(FatJet_tautau_Score)")
@@ -190,7 +198,7 @@ void BuildBg(
     }
 
     if (include_AK15) {
-        df_AK15 = df
+        df_AK15 = df_wRaw
             .Filter("nAK15Puppi >= 1", "Require at least one AK15")
             .Define("ak15_tautau_Score", "AK15Puppi_ParTv3_probXtauhtauh / (AK15Puppi_ParTv3_probXtauhtauh + AK15Puppi_ParTv3_probQCD)")
             .Define("BestAK15Idx", "GetHighestTauScore(ak15_tautau_Score)")
@@ -292,8 +300,8 @@ void BuildBg(
 
     std::cout << "Saving all event ids " << std::endl;
     std::string raw_out_dir = std::string(save_directory) + "/RawEventInfoBG" + std::string(identifyer) + ".root";
-    std::vector<std::string> raw_columns = {"event"};
-    snapshots.push_back(df.Snapshot("Events", raw_out_dir, raw_columns, opts));
+    std::vector<std::string> raw_columns = {"event", "NRawEvents"};
+    snapshots.push_back(df_wRaw.Snapshot("Events", raw_out_dir, raw_columns, opts));
 
     if (!snapshots.empty()) {
         ROOT::RDF::RunGraphs(snapshots);

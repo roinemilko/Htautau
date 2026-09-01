@@ -196,15 +196,24 @@ void PlotEffDiffs(
 
 
     TCanvas c("c_diff_eff", "", 900, 700);
-    gPad->SetTopMargin(0.12);
+    gPad->SetTopMargin(0.08);
+    gPad->SetRightMargin(0.08);
 
-    gAK4->SetTitle(";genH_pt [GeV];#Delta Matching Efficiency");
-    gAK4->Draw("AP");
+
+    gAK4->SetTitle(";Higgs p_{T} [GeV];#Delta Matching Efficiency");
+
+    gAK4->SetMarkerSize(0.8);
+    gAK8->SetMarkerSize(0.8);
+    gAK15->SetMarkerSize(0.8);
+
+    gAK4->Draw("APLE");
     gAK4->GetYaxis()->SetRangeUser(-0.3, 0.3);
     gAK4->GetXaxis()->SetRangeUser(0, 800);
+    gAK4->GetYaxis()->SetLabelSize(0.035);
+    gAK4->GetXaxis()->SetLabelSize(0.035);
 
-    gAK8->Draw("P SAME");
-    gAK15->Draw("P SAME");
+    gAK8->Draw("PLE SAME");
+    gAK15->Draw("PLE SAME");
 
     pAK8 ->Draw("L SAME");
     pAK15->Draw("L SAME");
@@ -216,24 +225,31 @@ void PlotEffDiffs(
     TLegend leg(0.55, 0.60, 0.83, 0.83);
     leg.SetBorderSize(0);
     leg.SetFillStyle(0);
-    leg.AddEntry(gAK4,  "Anti k_{T}, R = 0.4, p_{T} > 30 GeV, |#eta| < 2.5", "lp");
-    leg.AddEntry(gAK8,  "Anti k_{T}, R = 0.8, p_{T} > 200 GeV, |#eta| < 2.5", "lp");
+    leg.AddEntry(gAK4,  "AK4", "lp");
+    leg.AddEntry(gAK8,  "AK8", "lp");
     leg.AddEntry(pAK8,  "prediction", "l");
-    leg.AddEntry(gAK15, "Anti k_{T}, R = 1.5, p_{T} > 150 GeV, |#eta| < 2.5", "lp");
+    leg.AddEntry(gAK15, "AK15", "lp");
     leg.AddEntry(pAK15, "prediction", "l");
+    leg.SetTextSize(0.04);
     leg.Draw();
 
     TLatex latex;
     latex.SetNDC();
     latex.SetTextFont(62);
     latex.SetTextSize(0.05);
-    latex.DrawLatex(0.13, 0.81, "CMS");
+    latex.DrawLatex(0.13, 0.86, "CMS");
     latex.SetTextFont(52);
     latex.SetTextSize(0.035);
-    latex.DrawLatex(0.13, 0.76, "Simulation, Work in Progress");
+    latex.DrawLatex(0.13, 0.82, "Simulation, Work in Progress");
     latex.SetTextFont(42);
     latex.SetTextSize(0.04);
-    latex.DrawLatex(0.13, 0.7, "H #rightarrow #tau#tau (125 GeV)");
+    latex.DrawLatex(0.13, 0.76, "H #rightarrow #tau#tau (125 GeV)");
+    latex.SetTextAlign(31); 
+    latex.SetTextFont(42);
+    latex.SetTextSize(0.040);
+    latex.DrawLatex(0.90, 0.93, "13.6 TeV");
+
+
 
     c.SaveAs(TString(save_path) + "/MatchingEffDiff_inclusive_minus_hadhad_allJets.png");
 }   

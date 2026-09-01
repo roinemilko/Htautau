@@ -14,6 +14,7 @@
 #define AK15_eta_max 2.5f
 
 const std::vector<std::string> TauBG_dict = {
+    "NRawEvents",
     "event",
     "tau_pt",
     "tau_eta",
@@ -69,6 +70,7 @@ const std::vector<std::string> TauBG_dict = {
 };
 
 const std::vector<std::string> AK8BG_dict = {
+    "NRawEvents",
     "event",
     // kinematics
     "fj_pt",
@@ -165,6 +167,7 @@ const std::vector<std::string> AK8BG_dict = {
 };
 
 const std::vector<std::string> AK15BG_dict = {
+    "NRawEvents",
     "event",
     // kinematics 
     "ak15_pt",

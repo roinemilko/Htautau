@@ -1,117 +1,28 @@
 import argparse
 import pandas as pd
 import numpy as np
-import xgboost as xgb
 import mplhep as hep
 import matplotlib.pyplot as plt
-from sklearn.model_selection import train_test_split
 from sklearn.metrics import roc_curve, auc, roc_auc_score
 from scipy.stats import bootstrap
 import sys
-from uproot_data import load_tau_data
-from uproot_fat import load_fatjet_data
-import uproot
-
-BG_STRING_DICT = {
-    "TTto4Q": r"$tt \to qqqq$",
-    "TTto2L2Nu": r"$tt \to \ell\ell\nu\nu$",
-    "TTtoLNu2Q": r"$tt \to \ell \nu qq$",
-    "DYto2Tau": "DY"
-}
-
-# Cross sections in pb for 13 TeV
-XSEC_DICT = {
-    # Backgrounds: NNLO/N3LO Standard Model predictions
-    "TTto4Q": 377.96,         # NNLO+NNLL inclusive ttbar * BR(W->qq)^2
-    "TTtoLNu2Q": 365.34,      # NNLO+NNLL inclusive ttbar * 2*BR(W->qq)*BR(W->lv)
-    "TTto2L2Nu": 88.29,       # NNLO+NNLL inclusive ttbar * BR(W->lv)^2
-    "DYto2Tau": 6077.22,      # NNLO DYJetsToLL M > 50 GeV
-    
-    # Signal: BSM VBF HH (kappa_2V = 0) * BR(HH -> bbtautau)
-    "VBFHHto2B2Tau": 0.00504, 
-}
-LUMI_FB = 137.0
-
-def get_process_name(file_path):
-    """Extracts the process name from the file path."""
-    for key in XSEC_DICT.keys():
-        if key in file_path:
-            return key
-    return os.path.basename(file_path).replace(".root", "")
-
-def get_weight(file_path):
-    """Calculates the expected number of events w = (xsec * lumi) / N_gen"""
-    lumi_pb = LUMI_FB * 1000.0
-    xsec = next((v for k, v in XSEC_DICT.items() if k in file_path), 1.0)
-
-    with uproot.open(f"{file_path}:Events") as tree:
-        n_gen = tree.num_entries
-    
-    return (xsec * lumi_pb) / n_gen if n_gen > 0 else 1.0
-
-def get_candidate_pt(df, mode):
-    """Gets the reconstructed event p_T"""
-    if mode == "AK8":
-        return df["fj_pt"].values
-    elif mode == "AK15":
-        return df["ak15_pt"].values
-    elif mode == "Tau":
-        px = df["tau_pt_1"] * np.cos(df["tau_phi_1"]) + df["tau_pt_2"] * np.cos(df["tau_phi_2"])
-        py = df["tau_pt_1"] * np.sin(df["tau_phi_1"]) + df["tau_pt_2"] * np.sin(df["tau_phi_2"])
-        return np.sqrt(px**2 + py**2).values
-    else:
-        raise ValueError(f"Unknown mode: {mode}")
-
-def load_data(sig_path, bg_path, mode, args, sig_vars=None, bg_vars=None):
-    """Caller for data loaders"""
-    if mode == "Tau":
-        df_sig = load_tau_data(sig_path, label=1, num_taus=args.num_taus, variables=sig_vars)
-        df_bg = load_tau_data(bg_path, label=0, num_taus=args.num_taus, variables=bg_vars)
-    else:
-        df_sig = load_fatjet_data(
-            sig_path, label=1, jet_type=mode, use_subjets=args.use_subjets, variables=sig_vars
-        )
-        df_bg = load_fatjet_data(
-            bg_path, label=0, jet_type=mode, use_subjets=args.use_subjets, variables=bg_vars
-        )
-
-    if args.use_weights:
-        df_sig["weight"] = get_weight(sig_path)
-        df_bg["weight"] = get_weight(bg_path)
-    else:
-        df_sig["weight"] = 1.0
-        df_bg["weight"] = 1.0
-
-    return df_sig, df_bg
-
-def safe_auc(y, p, w=None):
-    if len(np.unique(y)) < 2:
-        return np.nan
-    if len(np.unique(p)) == 1:
-        return 0.5
-    return roc_auc_score(y, p, sample_weight=w)
-
-def get_weighted_threshold(y_true, y_pred, weights, target_fpr):
-    """Returns the cut when inference is done with weighted samples"""
-    fpr, tpr, thresholds = roc_curve(y_true, y_pred, sample_weight=weights)
-    idx = np.where(fpr <= target_fpr)[0][-1] if len(np.where(fpr <= target_fpr)[0]) > 0 else 0
-    return thresholds[idx]
+from plot_helpers import *
+import gc
+from datetime import datetime
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Intersection-method fair evaluation of multiple models"
+        description="Intersection-method fair evaluation of multiple models from Parquet"
     )
-    parser.add_argument("--sigs", nargs="+", required=True, help="Signal ROOT file per model/mode")
-    parser.add_argument("--bgs", nargs="+", required=True, help="Background ROOT file per model/mode")
-    parser.add_argument("--models", nargs="+", required=True, help="Paths to trained XGBoost models")
+    parser.add_argument("--parquets", nargs="+", required=True, help="List of Parquet inference results")
     parser.add_argument("--modes", nargs="+", required=True, choices=["Tau", "AK8", "AK15"])
     parser.add_argument("--names", nargs="+", required=True, help="Labels for the plot legend")
     parser.add_argument("--bg_mode", required=True, help="Name of the bg mode for plot axes")
     parser.add_argument("--out_plot", required=True, help="Output path for AUC vs pT plot")
     parser.add_argument("--out_eff_plot", required=True, help="Output path for sig. eff. plot")
-    parser.add_argument("--seed", type=int, default=100)
     parser.add_argument("--num_taus", type=int, default=2)
     parser.add_argument("--use_subjets", action="store_true")
+    parser.add_argument("--cms_label", default="Work in Progress")
     parser.add_argument("--fpr", type=float, default=0.01, help="Target Background False Positive Rate")
     parser.add_argument("--use_weights", action="store_true", help="Apply physical expected yields")
     parser.add_argument(
@@ -121,144 +32,60 @@ def main():
     )
     args = parser.parse_args()
 
-    if not (
-        len(args.sigs)
-        == len(args.bgs)
-        == len(args.models)
-        == len(args.modes)
-        == len(args.names)
-    ):
-        print("Error: --sigs, --bgs, --models, --modes, and --names must have the same length.")
+    if not (len(args.parquets) == len(args.modes) == len(args.names)):
+        print("Error: --parquets, --modes, and --names must have the same length.")
         sys.exit(1)
 
     hep.style.use("CMS")
-    num_models = len(args.models)
+    num_models = len(args.parquets)
 
-    sig_dfs = []
-    bg_dfs = []
-    models = []
-    expected_features = []
+    df_evals = []
+
     for i in range(num_models):
-        print(f"Loading model and data for {args.names[i]} ({args.modes[i]})...")
-        
-        bst = xgb.Booster()
-        bst.load_model(args.models[i])
-        models.append(bst)
-        
-        features = bst.feature_names
-        expected_features.append(features)
-        
-        req_cols = []
-        if args.modes[i] == "AK8": 
-            req_cols = ["fj_pt"]
-        elif args.modes[i] == "AK15": 
-            req_cols = ["ak15_pt"]
-        elif args.modes[i] == "Tau": 
-            req_cols = ["tau_pt", "tau_phi"]
+        print(f"Loading inference for {args.names[i]}...")
 
-        sig_req_cols = req_cols + ["genH_pt", "event"]
-        bg_req_cols = req_cols + ["event"]
-            
-        load_vars = load_vars = sorted(set(features) | set(req_cols)) if features else None
-        
-        if features:
-            base_vars = []
-            for f in features:
-                if f.endswith("_1") or f.endswith("_2"):
-                    base_vars.append(f[:-2])
-                else:
-                    base_vars.append(f)
-            
-            sig_vars = sorted(set(base_vars) | set(sig_req_cols))
-            bg_vars = sorted(set(base_vars) | set(bg_req_cols))
-        else:
-            sig_vars = None
-            bg_vars = None
+        df_computed = pd.read_parquet(args.parquets[i])
 
-        df_sig, df_bg = load_data(
-            args.sigs[i], args.bgs[i], args.modes[i], args, sig_vars=sig_vars, bg_vars=bg_vars
-        )
+        if not args.use_all:
+            df_computed = df_computed[df_computed["event"] % 2 == 1]
 
-        df_sig = df_sig.set_index("event")  
-        df_bg = df_bg.set_index("event")
+        df_computed["sample"] = np.where(df_computed["label"] == 1, "sig", "bg")
+        df_computed = df_computed.set_index(["sample", "event"])
 
-        n_dup_sig = int(df_sig.index.duplicated().sum())
-        n_dup_bg = int(df_bg.index.duplicated().sum())
-        n_unique_sig = df_sig.index.nunique()
-        n_unique_bg = df_bg.index.nunique()
+        n_dup = int(df_computed.index.duplicated().sum())
+        print(f"Evaluated rows={len(df_computed)}, unique={len(df_computed) - n_dup}, dup_rows={n_dup}")
 
-        print(
-            f"{args.names[i]} ({args.modes[i]}): "
-            f"sig rows={len(df_sig)}, unique={n_unique_sig}, dup_rows={n_dup_sig}; "
-            f"bg rows={len(df_bg)}, unique={n_unique_bg}, dup_rows={n_dup_bg}"
-        )
+        if n_dup > 0:
+            df_computed = df_computed[~df_computed.index.duplicated(keep="first")]
 
-        overlap = df_sig.index.intersection(df_bg.index)
-        print(f"Duplicate event ID:s in sg/bg: {len(overlap)}")
+        df_evals.append(df_computed)
+        gc.collect()
 
-        if n_dup_sig > 0:
-            df_sig = df_sig[~df_sig.index.duplicated(keep="first")]
+    print("Building intersection")
+    common_idx = df_evals[0].index
+    for i in range(1, num_models):
+        common_idx = common_idx.intersection(df_evals[i].index)
 
-        if n_dup_bg > 0:
-            df_bg = df_bg[~df_bg.index.duplicated(keep="first")]
+    print(f"Common signal events: {sum(common_idx.get_level_values('sample') == 'sig')}")
+    print(f"Common background events: {sum(common_idx.get_level_values('sample') == 'bg')}")
 
-        df_sig.index = pd.MultiIndex.from_arrays(
-            [["sig"] * len(df_sig), df_sig.index], names=["sample", "event"]
-        )
-        df_bg.index = pd.MultiIndex.from_arrays(
-            [["bg"] * len(df_bg), df_bg.index], names=["sample", "event"]
-        )
+    eval_df = pd.DataFrame(index=common_idx)
+    eval_df["label"] = np.where(common_idx.get_level_values("sample") == "sig", 1, 0)
+    eval_df["weight"] = df_evals[0].loc[common_idx, "weight"].values
+    eval_df["genH_pt"] = df_evals[0].loc[common_idx, "genH_pt"].values
 
-        sig_dfs.append(df_sig)
-        bg_dfs.append(df_bg)
+    sig_weight_val = eval_df.loc[eval_df["label"] == 1, "weight"].iloc[0] if not eval_df[eval_df["label"] == 1].empty else "N/A"
+    bg_weight_val = eval_df.loc[eval_df["label"] == 0, "weight"].iloc[0] if not eval_df[eval_df["label"] == 0].empty else "N/A"
+    print(f"Signal weight applied: {sig_weight_val}")
+    print(f"Background weight applied: {bg_weight_val}")
 
-    print("Building intersection of events")
-    common_sig = sig_dfs[0].index
-    common_bg = bg_dfs[0].index
     for i in range(num_models):
-        common_sig = common_sig.intersection(sig_dfs[i].index)
-        common_bg = common_bg.intersection(bg_dfs[i].index)
+        eval_df[f"pred_{i}"] = df_evals[i].loc[common_idx, "pred"].values
+        eval_df[f"pt_{i}"] = df_evals[i].loc[common_idx, "obj_pt"].values
 
-    print(f"Common signal events: {len(common_sig)}")
-    print(f"Common background events: {len(common_bg)}")
+    del df_evals
+    gc.collect()
 
-    if args.use_all:
-        test_sig_idx = common_sig
-        test_bg_idx = common_bg
-    else:
-        test_sig_idx = common_sig[common_sig.get_level_values("event") % 2 == 1]
-        test_bg_idx = common_bg[common_bg.get_level_values("event") % 2 == 1]
-
-    test_idx = test_sig_idx.union(test_bg_idx)
-
-    eval_df = pd.DataFrame(index=test_idx)
-    eval_df["label"] = 0
-    eval_df.loc[test_sig_idx, "label"] = 1
-    
-    eval_df["weight"] = 1.0
-    eval_df.loc[test_sig_idx, "weight"] = sig_dfs[0].loc[test_sig_idx, "weight"].values
-    eval_df.loc[test_bg_idx, "weight"] = bg_dfs[0].loc[test_bg_idx, "weight"].values
-
-    print("Running inference...")
-    for i in range(num_models):
-        df_all = pd.concat([sig_dfs[i], bg_dfs[i]])
-        df_test = df_all.loc[test_idx]
-        
-        if i == 0:
-            eval_df["genH_pt"] = df_test["genH_pt"].values
-
-        feat_names = expected_features[i]
-        if feat_names is None:
-            X_test = df_test.drop(columns=["label"])
-        else:
-            X_test = df_test[feat_names]
-        dtest = xgb.DMatrix(X_test, missing=np.inf)
-        preds = models[i].predict(dtest)
-        
-        pts = get_candidate_pt(df_test, args.modes[i])
-        eval_df[f"pred_{i}"] = preds
-        eval_df[f"pt_{i}"] = pts
-    
     pt_cols = [f"pt_{i}" for i in range(num_models)]
     eval_df["ref_pt"] = eval_df[pt_cols].mean(axis=1)
     print(f"Final common test set size: {len(eval_df)} events.")
@@ -304,7 +131,7 @@ def main():
                         vectorized=False,
                         paired=True,
                         n_resamples=50,
-                        random_state=args.seed,
+                        random_state=datetime.now(),
                         method="percentile",
                     )
                     model_errors[j].append(res.standard_error)
@@ -360,9 +187,9 @@ def main():
     ax_auc.grid(axis="y", which="minor", linestyle=":", alpha=0.4)
     ax_auc.grid(axis="x", linestyle=":", alpha=0.7)
     hep.cms.label(
-        "Work in Progress",
+        args.cms_label,
         data=False,
-        rlabel=rf"$H \to \tau\tau$ + {BG_STRING_DICT[args.bg_mode]}",
+        rlabel=rf"$H \to \tau\tau$ + {get_mode_names(args.bg_mode)}",
         ax=ax_auc,
         loc=0,
         fontsize=14,
@@ -417,16 +244,20 @@ def main():
 
         n_matched_unweighted = len(bin_sig)
         n_matched_weighted = bin_sig["weight"].sum()
-        n_sig_list_eff.append(n_matched_weighted)
+        n_sig_list_eff.append(n_matched_unweighted)
 
         for j in range(num_models):
-            if n_matched_weighted < 50:
+            if n_matched_unweighted < 50:
                 sig_effs[j].append(np.nan)
                 sig_errs[j].append(np.nan)
             else:
                 passing_weights = bin_sig.loc[bin_sig[f"pred_{j}"] > thresholds[j], "weight"].sum()
-                eff = passing_weights / n_matched_weighted
-                err = np.sqrt(eff * (1 - eff) / n_matched_unweighted)
+                
+                raw_eff = passing_weights / n_matched_weighted
+                eff = np.clip(raw_eff, 0.0, 1.0)
+                
+                variance = max(0.0, eff * (1.0 - eff))
+                err = np.sqrt(variance / n_matched_unweighted)
                 
                 sig_effs[j].append(eff)
                 sig_errs[j].append(err)
@@ -435,6 +266,9 @@ def main():
         3, 1, figsize=(8, 8), sharex=True,
         gridspec_kw={"height_ratios": [3, 1, 1]}, dpi=150,
     )
+
+    ax_inset = ax_eff.inset_axes([0.10, 0.10, 0.42, 0.50])
+    global_min_eff = 1.0
 
     for j in range(num_models):
 
@@ -464,6 +298,20 @@ def main():
             label=f"{args.names[j]} (Cut: {cut_str})",
         )
 
+        ax_inset.errorbar(
+            bin_centers,
+            sig_effs[j],
+            xerr=x_err,
+            yerr=sig_errs[j],
+            fmt=f"{markers[j % len(markers)]}-",
+            color=colors[j % len(colors)],
+            capsize=3,
+        )
+
+        valid_effs = [e for e in sig_effs[j] if not np.isnan(e)]
+        if valid_effs:
+            global_min_eff = min(global_min_eff, min(valid_effs))
+
         if j != 0:
             eff_j = np.array(sig_effs[j])
             eff_0 = np.array(sig_effs[0])
@@ -488,14 +336,29 @@ def main():
     br_str = f"{br:.0e}"
         
     ax_eff.set_ylabel(f"Signal eff.")
-    ax_eff.legend(loc="best", title=f"Background Rejection {br_str}", title_fontsize=14)
+    ax_eff.legend(
+        loc="center right", 
+        title=f"Background Rejection {br_str}", 
+        title_fontsize=14, 
+        fontsize=12
+    )
     ax_eff.grid(axis="y", which="major", linestyle="-", alpha=0.7)
     ax_eff.grid(axis="y", which="minor", linestyle=":", alpha=0.4)
     ax_eff.grid(axis="x", linestyle=":", alpha=0.7)
+    ax_eff.set_ylim(0.0, 1.06)
+    ax_eff.set_title(rf"$H \to \tau\tau$ + {get_mode_names(args.bg_mode)}", loc="center", fontsize=14)
     hep.cms.label(
-        "Work in Progress", data=False, rlabel=rf"$H \to \tau\tau$ + {BG_STRING_DICT[args.bg_mode]}",
+        args.cms_label, data=False, rlabel="13.6 TeV",
         ax=ax_eff, loc=0, fontsize=14,
     )
+
+    if global_min_eff > 0.75:
+        ax_inset.set_ylim(0.70, 1.05)
+        ax_inset.set_xlim(200, 500.0) 
+        ax_inset.grid(axis="both", linestyle=":", alpha=0.5)
+        ax_inset.tick_params(axis='both', labelsize=10)
+    else:
+        ax_inset.remove()
 
     
     ax_eff_rat.axhline(1.0, color="black", linestyle="--", alpha=0.5)
@@ -512,8 +375,11 @@ def main():
     ax_yield_eff.legend(loc="upper right", fontsize=10)
     fig_eff.tight_layout()
     fig_eff.savefig(args.out_eff_plot, bbox_inches="tight")
-    plt.close(fig_eff)
-    print(f"saved to {args.out_eff_plot}")
+    
+
+    plt.close("all")
+    gc.collect()
+    print(f"savecleard to {args.out_eff_plot}")
 
 
 if __name__ == "__main__":

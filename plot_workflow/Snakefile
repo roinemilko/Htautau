@@ -12,7 +12,6 @@ BG_MAP = {
 }
 
 FILES = ["Jet", "FatJet", "AK15", "Tau", "RawEventInfo"]
-BG_FILES = ["TauBG"]
 BG_CHANNELS = ["TTto4Q", "TTto2L2Nu", "TTtoLNu2Q", "DYto2Tau"]
 
 _HADHAD = "_hadhad"
@@ -148,6 +147,10 @@ EXPECTED_SUBJET_PLOTS = [
     for bg in REQUESTED_BGS
 ] if REQUESTED_SUBJETS else []
 
+EXPECTED_PT_EFF_PLOTS = [
+    f"plots/{dataset}/JetFatJetAK15_recoeff.png"
+    for dataset in DATA
+]
 
 rule all:
     input:
@@ -159,7 +162,8 @@ rule all:
         EXPECTED_EFF_DIFF_PLOTS,
         EXPECTED_DECAY_PROD_PLOTS,
         EXPECTED_CHANNEL_EFF_PLOTS,
-        EXPECTED_SUBJET_PLOTS
+        EXPECTED_SUBJET_PLOTS,
+        EXPECTED_PT_EFF_PLOTS
 
 rule jet_plots:
     input:
@@ -168,6 +172,10 @@ rule jet_plots:
 rule subjet_plots:
     input:
         EXPECTED_SUBJET_PLOTS
+
+rule eff_diffs:
+    input:
+        EXPECTED_EFF_DIFF_PLOTS
 
 rule jet_effs:
     input:
@@ -182,6 +190,10 @@ rule effs_channel:
         EXPECTED_EFF_DIFF_PLOTS,
         EXPECTED_DECAY_PROD_PLOTS,
         EXPECTED_CHANNEL_EFF_PLOTS
+
+rule pt_effs:
+    input:
+        EXPECTED_PT_EFF_PLOTS
 
 rule run_jet_effs:
     input:
@@ -248,8 +260,8 @@ rule run_eff_diffs:
     input:
         raw_had  = lambda w: f"{DATA_MAP[w.dataset]}/RawEventInfo_hadhad.root",
         raw_inc  = lambda w: f"{DATA_MAP[w.dataset]}/RawEventInfo.root",
-        ak4_had  = lambda w: f"{DATA_MAP[w.dataset]}/Jet_hadhad.root",
-        ak4_inc  = lambda w: f"{DATA_MAP[w.dataset]}/Jet.root",
+        ak4_had  = lambda w: f"{DATA_MAP[w.dataset]}/Tau_hadhad.root",
+        ak4_inc  = lambda w: f"{DATA_MAP[w.dataset]}/Tau.root",
         ak8_had  = lambda w: f"{DATA_MAP[w.dataset]}/fatJet_hadhad.root",
         ak8_inc  = lambda w: f"{DATA_MAP[w.dataset]}/fatJet.root",
         ak15_had = lambda w: f"{DATA_MAP[w.dataset]}/AK15_hadhad.root",
@@ -330,4 +342,20 @@ rule run_subjet_plot:
     shell:
         """
         root -l -b -q 'Plots.C(false, {params.ak8}, {params.ak15}, false, "{params.bg_path}", "{params.bg_chan}", "{params.plot_params}", "{output}", {params.normalize}, {params.hadhad}, "{params.jet_path}")'
+        """
+
+
+rule run_pt_effs:
+    input:
+        raw  = lambda w: f"{DATA_MAP[w.dataset]}/RawEventInfo_hadhad.root",
+        ak4  = lambda w: f"{DATA_MAP[w.dataset]}/Jet_hadhad.root",
+        ak8  = lambda w: f"{DATA_MAP[w.dataset]}/fatJet_hadhad.root",
+        ak15 = lambda w: f"{DATA_MAP[w.dataset]}/AK15_hadhad.root"
+    output:
+        plot = "plots/{dataset}/JetFatJetAK15_recoeff.png"
+    params:
+        save_path = "plots/{dataset}"
+    shell:
+        """
+        root -l -b -q 'PlotEff_OnlyPT.C("{params.save_path}", "{input.raw}", "{input.ak4}", "{input.ak8}", "{input.ak15}")'
         """

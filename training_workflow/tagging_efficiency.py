@@ -1,60 +1,33 @@
 import argparse
 import pandas as pd
 import numpy as np
-import xgboost as xgb
 import mplhep as hep
 import matplotlib.pyplot as plt
-from sklearn.model_selection import train_test_split
+from sklearn.metrics import roc_curve, auc, roc_auc_score
+from scipy.stats import bootstrap
 import sys
-from uproot_fat import load_fatjet_data
-from uproot_data import load_tau_data
 import uproot
-
-BG_STRING_DICT = {
-    "TTto4Q": r"$tt \to qqqq$",
-    "TTto2L2Nu": r"$tt \to \ell\ell\nu\nu$",
-    "TTtoLNu2Q": r"$tt \to \ell \nu qq$",
-    "DYto2Tau": "DY"
-}
-
-def load_data(sig_path, bg_path, mode, args, variables=None):
-
-    base_vars = variables if variables is not None else []
-
-    sig_req_vars = sorted(list(set(base_vars + ["event", "genH_pt"])))
-    bg_req_vars = sorted(list(set(base_vars + ["event"])))
-
-    if mode == "Tau":
-        df_sig = load_tau_data(sig_path, label=1, num_taus=args.num_taus, variables=sig_req_vars)
-        df_bg = load_tau_data(bg_path, label=0, num_taus=args.num_taus, variables=bg_req_vars)
-    else:
-        df_sig = load_fatjet_data(
-            sig_path, label=1, jet_type=mode, use_subjets=args.use_subjets, variables=sig_req_vars
-        )
-        df_bg = load_fatjet_data(
-            bg_path, label=0, jet_type=mode, use_subjets=args.use_subjets, variables=bg_req_vars
-        )
-    
-    return df_sig, df_bg
+from plot_helpers import *
+import gc
 
 def main():
     parser = argparse.ArgumentParser(description="Tagging Efficiency vs True Higgs pT")
-    parser.add_argument("--sigs", nargs="+", required=True)
-    parser.add_argument("--bgs", nargs="+", required=True)
+    parser.add_argument("--parquets", nargs="+", required=True)
     parser.add_argument("--bg_mode", required=True, help="Name of the bg mode for plot axes")
-    parser.add_argument("--models", nargs="+", required=True)
     parser.add_argument("--modes", nargs="+", required=True, choices=["Tau", "AK8", "AK15"])
     parser.add_argument("--names", nargs="+", required=True)
     parser.add_argument("--out_plot", required=True)
-    parser.add_argument("--seed", type=int, default=100)
     parser.add_argument("--num_taus", type=int, default=2)
     parser.add_argument("--use_subjets", action="store_true")
     parser.add_argument("--fpr", type=float, default=0.01, help="Target Background Efficiency")
     parser.add_argument("--raw_sig", required=True, help="Path to RawEventInfo.root")
+    parser.add_argument("--use_weights", action="store_true", help="Apply cross-section weights")
+    parser.add_argument("--cms_label", default="Work in Progress")
+    parser.add_argument("--use_all", action="store_true", required=True)
     args = parser.parse_args()
 
     hep.style.use("CMS")
-    num_models = len(args.models)
+    num_models = len(args.parquets)
 
     pt_bins = [
         200, 250, 300, 350, 400, 450, 500, 550, 600, 650, 700,
@@ -78,8 +51,7 @@ def main():
     with uproot.open(f"{args.raw_sig}:Events") as raw_tree:
         raw_evts = raw_tree["event"].array(library="np")
         raw_pt = raw_tree["genH_pt_raw"].array(library="np")
-
-        raw_genH_pt = raw_pt[raw_evts % 2 == 1]
+        raw_genH_pt = raw_pt[raw_evts % 2 == 1] if not args.use_all else raw_pt
 
     n_gen_list = []
     for i in range(len(pt_bins) - 1):
@@ -90,44 +62,33 @@ def main():
     ref_effs_mat = None
     ref_errs_mat = None
 
+    ax_inset = ax_eff_mat.inset_axes([0.10, 0.1, 0.45, 0.50])
+
     for j in range(num_models):
-        print(f"Processing {args.names[j]} ({args.modes[j]})...")
+        print(f"Processing {args.names[j]}...")
         
-        bst = xgb.Booster()
-        bst.load_model(args.models[j])
-        features = bst.feature_names
+        df_all = pd.read_parquet(args.parquets[j])
+
+        df_test = df_all[df_all["event"] % 2 == 1] if not args.use_all else df_all
+        del df_all
+        gc.collect()
         
-        base_vars = []
-        if features:
-            for f in features:
-                if f.endswith("_1") or f.endswith("_2"):
-                    base_vars.append(f[:-2])
-                else:
-                    base_vars.append(f)
-            load_vars = sorted(list(set(base_vars)))
-        else:
-            load_vars = None
-            
-        df_sig, df_bg = load_data(args.sigs[j], args.bgs[j], args.modes[j], args, variables=load_vars)
+        y_test = df_test["label"].values
+        w_test = df_test["weight"].values
+        all_preds = df_test["pred"].values
+        
+        if "weight" in df_test.columns:
+            print(f"model {j} sig weight: {df_test[y_test == 1]['weight'].iloc[0]}")
+            print(f"model {j} bg weight: {df_test[y_test == 0]['weight'].iloc[0]}")
 
-        test_sig = df_sig[df_sig["event"] % 2 == 1].copy()
-        test_bg = df_bg[df_bg["event"] % 2 == 1].copy()
+        threshold = get_weighted_threshold(y_test, all_preds, w_test, args.fpr)
 
-        # Set threshold form background
-        X_bg = test_bg[features] if features else test_bg.drop(columns=["label"])
-        d_bg = xgb.DMatrix(X_bg, missing=np.inf)
-        bg_preds = bst.predict(d_bg)
-        threshold = np.percentile(bg_preds, 100 * (1 - args.fpr))
-
-        # Predictions
-        X_sig = test_sig[features] if features else test_sig.drop(columns=["label", "genH_pt", "event"])
-        d_sig = xgb.DMatrix(X_sig, missing=np.inf)
-        sig_preds = bst.predict(d_sig)
+        sig_preds = all_preds[y_test == 1]
+        genH_pt = df_test.loc[y_test == 1, "genH_pt"].values
 
         sig_effs_mat, sig_errs_mat, n_sig_list_mat = [], [], []
         sig_effs_abs, sig_errs_abs = [], []
         
-        genH_pt = test_sig["genH_pt"].values
         for i in range(len(pt_bins) - 1):
             pt_min, pt_max = pt_bins[i], pt_bins[i + 1]
             
@@ -159,15 +120,14 @@ def main():
                 sig_errs_abs.append(err_abs)
             
         all_sig_yields_mat.append(n_sig_list_mat)
-
-
+        global_min_eff = 1.0
         cut = threshold
         cut_str = None
         
         if cut > 0.999:
             cut_inv = 1 - threshold
-            exp = int(np.floor(np.log10(cut_inv)))
-            mantissa = cut_inv / (10**exp)
+            exp = int(np.floor(np.log10(cut_inv))) if cut_inv > 0 else -10
+            mantissa = cut_inv / (10**exp) if cut_inv > 0 else 0
             if abs(mantissa - 1.0) < 1e-5:
                 cut_inv_str = f"$10^{{{exp}}}$"
             else:
@@ -181,6 +141,16 @@ def main():
             fmt=f"{markers[j % len(markers)]}-", color=colors[j % len(colors)],
             capsize=3, label=f"{args.names[j]} (Cut: {cut_str})",
         )
+
+        ax_inset.errorbar(
+            bin_centers, sig_effs_mat, xerr=x_err, yerr=sig_errs_mat,
+            fmt=f"{markers[j % len(markers)]}-", color=colors[j % len(colors)],
+            capsize=3
+        )
+
+        valid_effs = [e for e in sig_effs_mat if not np.isnan(e)]
+        if valid_effs:
+            global_min_eff = min(global_min_eff, min(valid_effs))
         
         ax_eff_abs.errorbar(
             bin_centers, sig_effs_abs, xerr=x_err, yerr=sig_errs_abs,
@@ -208,6 +178,9 @@ def main():
                 capsize=3
             )
 
+        del df_test, all_preds, sig_preds, genH_pt, y_test, w_test
+        gc.collect()
+
     ax_yield_abs.bar(bin_centers, n_gen_list, width=bin_widths, alpha=0.2, color="black", label="Total events")
     for j in range(num_models):
         ax_yield_mat.hist(
@@ -227,13 +200,29 @@ def main():
     br_str = f"{br:.0e}"
 
     ax_eff_mat.set_ylabel(f"Tagging Eff.")
-    ax_eff_mat.legend(loc="best", title=f"Background Rejection {br_str}", title_fontsize=14)
+    ax_eff_mat.legend(
+        loc="center right", 
+        title=f"Background Rejection {br_str}", 
+        title_fontsize=14, 
+        fontsize=12
+    )
     ax_eff_mat.grid(axis="y", which="major", linestyle="-", alpha=0.7)
     ax_eff_mat.grid(axis="y", which="minor", linestyle=":", alpha=0.4)
     ax_eff_mat.grid(axis="x", linestyle=":", alpha=0.7)
-    hep.cms.label("Work in Progress", data=False, rlabel=rf"$H \to \tau\tau$ + {BG_STRING_DICT[args.bg_mode]}", ax=ax_eff_mat, loc=0, fontsize=14)
+    ax_eff_mat.set_ylim(0.0, 1.06)
+    hep.cms.label(args.cms_label, data=False, rlabel="13.6 TeV", ax=ax_eff_mat, loc=0, fontsize=14)
+    ax_eff_mat.set_title(rf"$H \to \tau\tau$ + {get_mode_names(args.bg_mode)}", loc="center", fontsize=14)
 
-    ax_ratio_mat.set_ylabel(f"/{args.modes[0]}")
+    if global_min_eff > 0.8:
+        ax_inset.set_ylim(0.8, 1.01)
+        ax_inset.set_xlim(200, 600.0) 
+        ax_inset.grid(axis="both", linestyle=":", alpha=0.5)
+        ax_inset.tick_params(axis='both', labelsize=10)
+    else:
+        ax_inset.remove()
+
+
+    ax_ratio_mat.set_ylabel(f"/{args.names[0]}")
     ax_ratio_mat.grid(axis="y", which="major", linestyle="-", alpha=0.7)
     ax_ratio_mat.grid(axis="x", linestyle=":", alpha=0.7)
 
@@ -246,12 +235,12 @@ def main():
     out_name_mat = args.out_plot.replace(".png", f"_matched.png")
     fig_mat.savefig(out_name_mat, bbox_inches="tight")
     
-    ax_eff_abs.set_ylabel(f"Reconstruciton eff.@ {args.fpr*100:.1f}%")
+    ax_eff_abs.set_ylabel(f"Reconstruction eff.@ {args.fpr*100:.1f}%")
     ax_eff_abs.legend(loc="best")
     ax_eff_abs.grid(axis="y", which="major", linestyle="-", alpha=0.7)
     ax_eff_abs.grid(axis="y", which="minor", linestyle=":", alpha=0.4)
     ax_eff_abs.grid(axis="x", linestyle=":", alpha=0.7)
-    hep.cms.label("Work in Progress", data=False, rlabel=rf"$H \to \tau\tau$ + {BG_STRING_DICT[args.bg_mode]}", ax=ax_eff_abs, loc=0, fontsize=14)
+    hep.cms.label(args.cms_label + "  " + rf"$\ \ \ H \to \tau\tau$ + {get_mode_names(args.bg_mode)}", data=False, rlabel="13.6 TeV", ax=ax_eff_mat, loc=0, fontsize=14)
     ax_yield_abs.set_yscale("log")
     ax_yield_abs.set_xlabel(r"Higgs $p_T$ [GeV]")
     ax_yield_abs.set_ylabel("Events")
@@ -261,8 +250,8 @@ def main():
     out_name_abs = args.out_plot.replace(".png", f"_absolute.png")
     fig_abs.savefig(out_name_abs, bbox_inches="tight")
     
-    plt.close(fig_mat)
-    plt.close(fig_abs)
+    plt.close('all')
+    gc.collect()
     print(f"Matched Tagging Efficiency plot saved to {out_name_mat}")
     print(f"Absolute Tagging Efficiency plot saved to {out_name_abs}")
 

@@ -38,10 +38,16 @@ void BuildData(
         return;
     }
     
-    ROOT::RDataFrame df("Events", file_pattern);
 
+
+    TChain chain("Events");
+    chain.Add(file_pattern);
+    ULong64_t n_raw = chain.GetEntries();    
+
+    ROOT::RDataFrame df(chain);
 
     auto df_truth = df
+        .Define("NRawEvents", [n_raw]() {return n_raw;})
         .Define("tauFromH", "MakeIsHardProcLastCopyTauFromHiggsMask(GenPart_pdgId, GenPart_genPartIdxMother, GenPart_statusFlags)")
         .Define("muMask", "TauIsSemileptonicMuMask_Clean(GenPart_pdgId, GenPart_genPartIdxMother)")
         .Define("eMask", "TauIsSemileptonicEMask_Clean(GenPart_pdgId, GenPart_genPartIdxMother)")

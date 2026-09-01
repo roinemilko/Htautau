@@ -3,8 +3,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import mplhep as hep
-from uproot_data import load_tau_data
-from uproot_fat import load_fatjet_data
+from Helpers import *
 
 
 def plot_corr_heatmap(df, title, out_path, cms_label="Work in progress"):
@@ -19,8 +18,9 @@ def plot_corr_heatmap(df, title, out_path, cms_label="Work in progress"):
         "ytick.major.size": 3,
     })
 
-    # Drop non-numeric columns for correlation
     df_num = df.select_dtypes(include="number")
+    if "weight" in df_num.columns:
+        df_num = df_num.drop(columns=["weight"])
 
     fig, ax = plt.subplots(figsize=(10, 8), dpi=150)
 
@@ -60,40 +60,31 @@ def plot_corr_heatmap(df, title, out_path, cms_label="Work in progress"):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--sig", required=True)
-    parser.add_argument("--bg", required=True)
+    parser.add_argument("--sig", required=True, help="Comma-separated list of signal root files")
+    parser.add_argument("--bg", required=True, help="Comma-separated list of background root files")
     parser.add_argument("--out_sig", required=True)
     parser.add_argument("--out_bg", required=True)
     parser.add_argument("--num_taus", type=int, default=1, choices=[1, 2])
-    parser.add_argument(
-        "--cms-label",
-        default="Work in Progress",
-        choices=["Preliminary", "Simulation", "Work in Progress", "Private Work"],
-    )
+    parser.add_argument("--cms-label", dest="cms_label", default="Work in Progress")
     parser.add_argument("--variables", nargs='+', default=None, help="List of variables to load")
-
     parser.add_argument("--mode", default="tau", choices=["Tau", "AK8", "AK15"], help="Object type to process")
     parser.add_argument("--use_subjets", action="store_true", help="Require 2 subjets and load subjet features (AK8/AK15 only)")
+    parser.add_argument("--use_weights", action="store_true", help="Calculate and use event weights")
     args = parser.parse_args()
     
-    if args.mode == "Tau":
-        if args.variables:
-            df_sig = load_tau_data(args.sig, label=1, num_taus=args.num_taus, variables=args.variables)
-            df_bg  = load_tau_data(args.bg, label=0, num_taus=args.num_taus, variables=args.variables)
-        else:
-            df_sig = load_tau_data(args.sig, label=1, num_taus=args.num_taus)
-            df_bg  = load_tau_data(args.bg, label=0, num_taus=args.num_taus)
+    df_sig, df_bg = load_data(
+        sig_path=args.sig,
+        bg_path=args.bg,
+        mode=args.mode,
+        args=args,
+        sig_vars=args.variables,
+        bg_vars=args.variables
+    )
 
-    if args.mode == "AK8" or args.mode == "AK15":
-        if args.variables:
-            df_sig = load_fatjet_data(args.sig, label=1, variables=args.variables, jet_type=args.mode, use_subjets=args.use_subjets)
-            df_bg  = load_fatjet_data(args.bg, label=0, variables=args.variables, jet_type=args.mode, use_subjets=args.use_subjets)
-        else:
-            df_sig = load_fatjet_data(args.sig, label=1, jet_type=args.mode, use_subjets=args.use_subjets)
-            df_bg  = load_fatjet_data(args.bg, label=0, jet_type=args.mode, use_subjets=args.use_subjets)
-
-    plot_corr_heatmap(df_sig, "", args.out_sig, args.cms_label)
-    plot_corr_heatmap(df_bg, "", args.out_bg, args.cms_label)
+    if not df_sig.empty:
+        plot_corr_heatmap(df_sig, "", args.out_sig, args.cms_label)
+    if not df_bg.empty:
+        plot_corr_heatmap(df_bg, "", args.out_bg, args.cms_label)
 
 
 if __name__ == "__main__":

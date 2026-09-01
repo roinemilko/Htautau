@@ -1,53 +1,72 @@
 import os
-import hashlib
 import argparse
-import uproot
-import pandas as pd
+import numpy as np
+import dask
+import dask.dataframe as dd
+from dask.distributed import Client
 import xgboost as xgb
-from sklearn.model_selection import train_test_split
-from uproot_data import load_tau_data
-from uproot_fat import load_fatjet_data
+import xgboost.dask as dxgb
+
+from Helpers import *
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--sig", required=True)
     parser.add_argument("--bg", required=True, help="One or more background ROOT files")
     parser.add_argument("--out_model", required=True)
-    parser.add_argument("--seed", type=int, default=100)
     parser.add_argument("--num_taus", type=int, default=1, choices=[1, 2], help="Use only leading tau or both")
     parser.add_argument("--variables", nargs='+', default=None, help="List of variables to load")
     parser.add_argument("--mode", default="tau", choices=["Tau", "AK8", "AK15"], help="Object type to process")
-    parser.add_argument("--use_subjets", action="store_true", help="Require 2 subjets and load subjet features (AK8/AK15 only)")
+    parser.add_argument("--use_subjets", action="store_true", help="Require 2 subjets and load subjet features")
+    parser.add_argument("--use_weights", action="store_true", help="Apply cross section weighting")
+    parser.add_argument("--n_workers", type=int, default=4)
     args = parser.parse_args()
+
+
+    dask.config.set({
+        'distributed.worker.memory.target': 0.60, 
+        'distributed.worker.memory.spill': 0.70,
+        'distributed.worker.memory.pause': 0.85, 
+    })
+    client = Client(n_workers=int(args.n_workers), threads_per_worker=4, memory_limit='5GB')
+    print(f"Dask client: {client.dashboard_link}")
+
 
     load_vars = list(set(args.variables + ["event"])) if args.variables else None
 
-    if args.mode == "Tau":
-        if args.variables:
-            df_sig = load_tau_data(args.sig, label=1, num_taus=args.num_taus, variables=args.variables)
+    sig_paths = args.sig.split(',')
+    bg_paths = args.bg.split(',')
 
-            df_bg  = load_tau_data(args.bg, label=0, num_taus=args.num_taus, variables=args.variables)
-        else:
-            df_sig = load_tau_data(args.sig, label=1, num_taus=args.num_taus)
-            df_bg  = load_tau_data(args.bg, label=0, num_taus=args.num_taus)
+    df_sig, df_bg = load_data(
+        sig_path=args.sig, 
+        bg_path=args.bg, 
+        mode=args.mode, 
+        args=args, 
+        sig_vars=load_vars, 
+        bg_vars=load_vars
+    )
 
-    if args.mode == "AK8" or args.mode == "AK15":
-        if args.variables:
-            df_sig = load_fatjet_data(args.sig, label=1, jet_type=args.mode, variables=args.variables, use_subjets=args.use_subjets)
-            df_bg = load_fatjet_data(args.bg, label=0, jet_type=args.mode, variables=args.variables, use_subjets=args.use_subjets)
-        else:
-            df_sig = load_fatjet_data(args.sig, label=1, jet_type=args.mode, use_subjets=args.use_subjets)
-            df_bg  = load_fatjet_data(args.bg, label=0, jet_type=args.mode, use_subjets=args.use_subjets)
-
-    df_all = pd.concat([df_sig, df_bg], ignore_index=True)
+    df_all = dd.concat([df_sig, df_bg])
 
 
-    df_train = df_all[df_all["event"] % 2 == 0].copy()
-    cols_to_drop = ["label", "event", "genH_pt"]
+    df_train = df_all[df_all["event"] % 2 == 0]
+
+
+    sum_w_sig_lazy = df_train[df_train["label"] == 1]["weight"].sum()
+    sum_w_bg_lazy = df_train[df_train["label"] == 0]["weight"].sum()
+    sum_w_sig, sum_w_bg = dask.compute(sum_w_sig_lazy, sum_w_bg_lazy)
+
+    if sum_w_sig > 0 and sum_w_bg > 0:
+        scale_factor = sum_w_bg / sum_w_sig
+        df_train["weight"] = df_train["weight"].where(df_train["label"] == 0, df_train["weight"] * scale_factor)
+
+    cols_to_drop = ["label", "event", "genH_pt", "weight", "process"]
     X_train = df_train.drop(columns=[c for c in cols_to_drop if c in df_train.columns])
-    y_train = df_train['label']
+    y_train = df_train["label"]
+    w_train = df_train["weight"]
 
-    dtrain = xgb.DMatrix(X_train, label=y_train)
+
+    dtrain = dxgb.DaskDMatrix(client, X_train, y_train, weight=w_train)
 
     params = {
         'objective': 'binary:logistic',
@@ -58,10 +77,13 @@ def main():
     }
 
     print("Training XGBoost...")
-    model = xgb.train(params, dtrain, num_boost_round=400)
-    
-    # Save the model
+    output = dxgb.train(client, params, dtrain, num_boost_round=400)
+    model = output['booster']
     model.save_model(args.out_model)
+    print(f"Saved model to {args.out_model}")
+
+    # Clean up
+    client.close()
 
 if __name__ == "__main__":
     main()

@@ -39,7 +39,7 @@ void Plots(bool AK4 = true, bool AK8 = true, bool AK15 = true,  bool Tau = true,
         const char* jet_path = "jets") {
 
 
-    const int kNBins = 400;
+    const int kNBins = 50;
     TString paramStr(params);
     TObjArray* paramArray = paramStr.Tokenize(",");
     int nParams = paramArray->GetEntries();
@@ -123,12 +123,18 @@ void Plots(bool AK4 = true, bool AK8 = true, bool AK15 = true,  bool Tau = true,
     gStyle->SetOptTitle(0);
 
     // https://root.cern.ch/doc/master/classTCanvas.html
-    TCanvas* c1 = new TCanvas("c1", "Jet plots", 400 * nParams, 450);
-    c1->Divide(nParams, 1); 
+    TCanvas* c1 = new TCanvas("c1", "Jet plots", 340 * nParams, 340);
+    c1->Divide(nParams, 1, 0.005, 0.01); 
 
-    TLegend* leg = new TLegend(0.55, 0.82, 0.98, 0.96);
+    TLegend* leg = new TLegend(0.60, 0.77, 0.98, 0.94);
     leg->SetTextSize(0.03);
-    leg->SetNColumns(2); 
+    leg->SetNColumns(1); 
+    leg->SetBorderSize(0);
+    leg->SetFillStyle(0);
+    leg->SetTextFont(42);
+    leg->SetMargin(0.15);
+    
+    leg->SetTextSize(0.03);
     leg->SetBorderSize(0);
     leg->SetFillStyle(0);
     leg->SetTextFont(42);
@@ -136,8 +142,10 @@ void Plots(bool AK4 = true, bool AK8 = true, bool AK15 = true,  bool Tau = true,
 
     for (int i = 0; i < nParams; ++i) {
         c1->cd(i + 1); 
-        gPad->SetTopMargin(0.20);
-
+        gPad->SetTopMargin(0.26);
+        gPad->SetBottomMargin(0.15); 
+        gPad->SetLeftMargin(0.20);
+        gPad->SetRightMargin(0.10);
         TString baseExpr = ((TObjString*)paramArray->At(i))->GetString();
         baseExpr.ReplaceAll(" ", ""); 
 
@@ -172,11 +180,11 @@ void Plots(bool AK4 = true, bool AK8 = true, bool AK15 = true,  bool Tau = true,
                     TH1F* h = (TH1F*)gDirectory->Get(hNameBg);
                     if (h) {
                         h->SetLineColor(kBlue + 5);
-                        h->SetLineStyle(2); // Dashed for Background
+                        h->SetLineStyle(2);
                         h->SetLineWidth(2);
                         if (normalize) h->Scale(1./h->Integral());
                         hs->Add(h);
-                        if (i == 0) leg->AddEntry(h, "Anti k_{T}, R = 0.4 (Background)", "l");
+                        if (i == 0) leg->AddEntry(h, "AK4 (Background)", "l");
                     }
                 }
             }
@@ -190,7 +198,7 @@ void Plots(bool AK4 = true, bool AK8 = true, bool AK15 = true,  bool Tau = true,
                         h->SetLineWidth(2);
                         if (normalize) h->Scale(1./h->Integral());
                         hs->Add(h);
-                        if (i == 0) leg->AddEntry(h, "Anti k_{T}, R = 0.4, p_{T} > 30, |#eta| < 2.5", "l");
+                        if (i == 0) leg->AddEntry(h, "AK4", "l");
                     }
                 }
             }
@@ -241,7 +249,7 @@ void Plots(bool AK4 = true, bool AK8 = true, bool AK15 = true,  bool Tau = true,
                 h_bg->SetLineWidth(2);
                 if (normalize && h_bg->Integral() > 0) h_bg->Scale(1.0 / h_bg->Integral());
                 hs->Add(h_bg);
-                if (i == 0) leg->AddEntry(h_bg, "Anti k_{T}, R = 0.8 (Background)", "l");
+                if (i == 0) leg->AddEntry(h_bg, "AK8 (background)", "l");
             }
             if (h_sig) {
                 h_sig->SetLineColor(kRed);
@@ -249,7 +257,7 @@ void Plots(bool AK4 = true, bool AK8 = true, bool AK15 = true,  bool Tau = true,
                 h_sig->SetLineWidth(2);
                 if (normalize && h_sig->Integral() > 0) h_sig->Scale(1.0 / h_sig->Integral());
                 hs->Add(h_sig);
-                if (i == 0) leg->AddEntry(h_sig, "Anti k_{T}, R = 0.8, p_{T} > 200, |#eta| < 2.5", "l");
+                if (i == 0) leg->AddEntry(h_sig, "AK8", "l");
             }
         }
 
@@ -298,7 +306,7 @@ void Plots(bool AK4 = true, bool AK8 = true, bool AK15 = true,  bool Tau = true,
                 h_bg->SetLineWidth(2);
                 if (normalize && h_bg->Integral() > 0) h_bg->Scale(1.0 / h_bg->Integral());
                 hs->Add(h_bg);
-                if (i == 0) leg->AddEntry(h_bg, "Anti k_{T}, R = 1.5 (Background)", "l");
+                if (i == 0) leg->AddEntry(h_bg, "AK15 (background)", "l");
             }
             if (h_sig) {
                 h_sig->SetLineColor(kGreen + 2);
@@ -306,7 +314,7 @@ void Plots(bool AK4 = true, bool AK8 = true, bool AK15 = true,  bool Tau = true,
                 h_sig->SetLineWidth(2);
                 if (normalize && h_sig->Integral() > 0) h_sig->Scale(1.0 / h_sig->Integral());
                 hs->Add(h_sig);
-                if (i == 0) leg->AddEntry(h_sig, "Anti k_{T}, R = 1.5, p_{T} > 150, |#eta| < 2.5", "l");
+                if (i == 0) leg->AddEntry(h_sig, "AK15", "l");
             }
         }
         if (Tau) {
@@ -355,7 +363,7 @@ void Plots(bool AK4 = true, bool AK8 = true, bool AK15 = true,  bool Tau = true,
                 h_bg->SetLineWidth(2);
                 if (normalize && h_bg->Integral() > 0) h_bg->Scale(1.0 / h_bg->Integral());
                 hs->Add(h_bg); 
-                if (i == 0) leg->AddEntry(h_bg, "Slimmed tau (Background)", "l");
+                if (i == 0) leg->AddEntry(h_bg, "Tau (Background)", "l");
             }
             
             if (h_sig) {
@@ -364,13 +372,12 @@ void Plots(bool AK4 = true, bool AK8 = true, bool AK15 = true,  bool Tau = true,
                 h_sig->SetLineWidth(2);
                 if (normalize && h_sig->Integral() > 0) h_sig->Scale(1.0 / h_sig->Integral());
                 hs->Add(h_sig); 
-                if (i == 0) leg->AddEntry(h_sig, "Slimmed tau after basic selection, |#eta| < 2.5", "l");
+                if (i == 0) leg->AddEntry(h_sig, "Tau", "l");
             }
         }
     
 
 
-        gPad->SetLeftMargin(0.15);
         hs->Draw("NOSTACK HIST");
         gPad->Update();
         hs->GetXaxis()->SetTitle(hist_title); 
@@ -380,7 +387,15 @@ void Plots(bool AK4 = true, bool AK8 = true, bool AK15 = true,  bool Tau = true,
         } else {
             hs->GetYaxis()->SetTitle("Number of jets");
         }
-        hs->GetYaxis()->SetTitleOffset(2.5);
+
+        hs->GetXaxis()->SetTitle(hist_title); 
+        hs->GetXaxis()->SetLabelSize(0.045); 
+        hs->GetXaxis()->SetTitleSize(0.05);  
+        hs->GetXaxis()->SetTitleOffset(1.2);
+
+        hs->GetYaxis()->SetLabelSize(0.045);
+        hs->GetYaxis()->SetTitleSize(0.05);
+        hs->GetYaxis()->SetTitleOffset(1.9);
         
         double dynamic_xmax = 0.0;
         double dynamic_xmin = 0.0;
@@ -443,32 +458,42 @@ void Plots(bool AK4 = true, bool AK8 = true, bool AK15 = true,  bool Tau = true,
             }
         }
         if (y_max > 0.0) {
-            hs->SetMaximum(1.15 * y_max);  // small headroom so peaks aren't flush
+            hs->SetMaximum(1.15 * y_max); 
             hs->SetMinimum(0.0);
         }
+
+
+        TLatex pad_latex;
+        pad_latex.SetNDC();
+        pad_latex.SetTextAlign(31);
+        pad_latex.SetTextFont(42);
+        pad_latex.SetTextSize(0.040);
+        pad_latex.DrawLatex(0.90, 0.75, "13.6 TeV");
+
         gPad->Modified();
         gPad->Update();
-
     }
 
-    c1->cd(0); 
 
+    c1->cd(0); 
     leg->Draw();
 
     TLatex latex;
     latex.SetNDC();
 
+    double text_x = 0.19 / nParams;
+
     latex.SetTextFont(62);
     latex.SetTextSize(0.05);
-    latex.DrawLatex(0.05, 0.93, "CMS");
+    latex.DrawLatex(text_x, 0.87, "CMS");
 
     latex.SetTextFont(52);
     latex.SetTextSize(0.035);
-    latex.DrawLatex(0.05, 0.88, "Simulation, Work in Progress");
+    latex.DrawLatex(text_x, 0.82, "Simulation Private"  );
 
     latex.SetTextFont(42);
     latex.SetTextSize(0.04);
-    latex.DrawLatex(0.05, 0.83, "H #rightarrow #tau#tau (125 GeV)");
+    latex.DrawLatex(text_x, 0.77, "H #rightarrow #tau#tau (125 GeV)");
 
     c1->SaveAs(save_path);
 }

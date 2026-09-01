@@ -4,10 +4,10 @@ import os
 def main():
     bg_dir = "/eos/user/m/mroine/NanoTuples/Htautau/data_workflow/jets/MADGRAPH"
     
-    raw_file = os.path.join(bg_dir, "RawEventInfo_hadhad.root")
-    tau_file = os.path.join(bg_dir, "Tau_hadhad.root")
-    ak8_file = os.path.join(bg_dir, "fatJet_hadhad.root")
-    ak15_file = os.path.join(bg_dir, "AK15_hadhad.root")
+    raw_file = os.path.join(bg_dir, "RawEventInfo.root")
+    tau_file = os.path.join(bg_dir, "Tau.root")
+    ak8_file = os.path.join(bg_dir, "fatJet.root")
+    ak15_file = os.path.join(bg_dir, "AK15.root")
 
     print("Reading tree metadata from TTto4Q background files...\n")
     
@@ -23,10 +23,10 @@ def main():
     print(f"{'Jet / Mode Type':<18} | {'Passing Events':<15} | {'Fraction Remaining':<18}")
     print("-" * 58)
 
-    # 2. Check each mode
+
     files = [
-        ("Tau (Resolved)", tau_file),
-        ("AK8 (FatJet)", ak8_file),
+        ("Tau", tau_file),
+        ("AK8", ak8_file),
         ("AK15", ak15_file),
     ]
 

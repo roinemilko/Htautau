@@ -1,15 +1,14 @@
 import uproot
-import awkward as ak
-import pandas as pd
+import dask
+dask.config.set({'dataframe.query-planning': False})
+import dask_awkward as dak
+import dask.dataframe as dd
 import os
 import numpy as np
-from tqdm import tqdm
-import hashlib
 
 AK8_VARIABLES = [
     "fj_pt", "fj_eta", "fj_phi", "fj_mass", "fj_msoftdrop", "fj_rawFactor", "fj_area",
-    "fj_chEmEF", "fj_chHEF", "fj_hfEmEF", "fj_hfHEF", "fj_neEmEF", "fj_neHEF", "fj_muEF",
-    "fj_lsf3", "fj_nConstituents", "fj_chMultiplicity", "fj_neMultiplicity",
+    "fj_chEmEF", "fj_chHEF", "fj_hfEmEF", "fj_hfHEF", "fj_neEmEF", "fj_neHEF", "fj_muEF", "fj_lsf3",
     "fj_tau1", "fj_tau2", "fj_tau3", "fj_tau4", "fj_globalParT3_QCD", "fj_globalParT3_TopbWev",
     "fj_globalParT3_TopbWmv", "fj_globalParT3_TopbWq", "fj_globalParT3_TopbWqq", 
     "fj_globalParT3_TopbWtauhv", "fj_globalParT3_WvsQCD", "fj_globalParT3_XWW3q", 
@@ -25,7 +24,7 @@ AK8_VARIABLES = [
     "fj_Subjet_btagUParTAK4B", "fj_Subjet_UParTAK4RegPtRawCorr", 
     "fj_Subjet_UParTAK4RegPtRawCorrNeutrino", "fj_Subjet_UParTAK4RegPtRawRes", 
     "fj_Subjet_UParTAK4V1RegPtRawCorr", "fj_Subjet_UParTAK4V1RegPtRawCorrNeutrino", 
-    "fj_Subjet_UParTAK4V1RegPtRawRes", "event"
+    "fj_Subjet_UParTAK4V1RegPtRawRes", "event", "fj_nConstituents", "fj_chMultiplicity", "fj_neMultiplicity"
 ]
 
 AK15_VARIABLES = [
@@ -46,145 +45,126 @@ AK15_VARIABLES = [
     "ak15_Subjet_rawFactor", "ak15_Subjet_pt_rawFactorCorrected", "ak15_Subjet_area", "event"
 ]
 
-def load_fatjet_data(file_path, label, jet_type="AK8", use_subjets=False, force_rebuild=False, variables=None):
+def load_fatjet_data(file_path, label, event_offset, 
+                     weight, process_name, jet_type="AK8", use_subjets=False, variables=None):
+
     if variables is None:
         variables = AK8_VARIABLES if jet_type == "AK8" else AK15_VARIABLES
-    if "event" not in variables:
-        variables.append("event")
-
-    base_name = os.path.basename(file_path).replace('.root', '')
-    parent_dir = os.path.basename(os.path.dirname(file_path))
-
-    config_string = f"{file_path}_{label}_{jet_type}_subjets{use_subjets}_{','.join(variables)}"
-    config_hash = hashlib.md5(config_string.encode('utf-8')).hexdigest()[:8]
-
-    cache_file = f"data_cache/{parent_dir}_{base_name}_cache_{jet_type}_{config_hash}.parquet"
-    
-    if not force_rebuild and os.path.exists(cache_file):
-        return pd.read_parquet(cache_file)
 
     n_subjet_var = "fj_nMatchedSubjets" if jet_type == "AK8" else "ak15_nMatchedSubjets"
 
-    read_vars = list(variables)
-    if use_subjets and n_subjet_var not in read_vars:
-        read_vars.append(n_subjet_var)
+    variables = list(variables)
+    if "event" not in variables:
+        variables.append("event")
+    
+    if use_subjets and n_subjet_var not in variables:
+        variables.append(n_subjet_var)
 
     if not use_subjets:
         variables = [var for var in variables if "_Subjet_" not in var]
 
-    out_vars = []
+    variables = sorted(list(set(variables)))
+
+    events = uproot.dask(f"{file_path}:Events", filter_name=variables, step_size=50_000)
+
+    if use_subjets:
+        events = events[events[n_subjet_var] == 2]
+
+    out_dict = {}
+    
+
+    if not use_subjets:
+        variables = [v for v in variables if "_Subjet_" not in v]
+
     for var in variables:
         if "_Subjet_" in var and use_subjets:
-            out_vars.extend([f"{var}_1", f"{var}_2"])
+            out_dict[f"{var}_1"] = events[var][:, 0]
+            out_dict[f"{var}_2"] = events[var][:, 1]
         else:
-            out_vars.append(var)
+            out_dict[var] = events[var]
 
-    accumulated_data = {var: [] for var in out_vars}
+    ak_record = dak.zip(out_dict)
 
-    tree = uproot.open(f"{file_path}:Events")
-    total_events = tree.num_entries
-    tree.close()
+    import dask
+    import awkward as ak
+    import dask.dataframe as dd
 
-    chunk_size = 250_000 
-    total_chunks = (total_events // chunk_size) + 1
+    def to_pandas_chunk(arr):
+        return ak.to_dataframe(arr).reset_index(drop=True)
 
-    iterator = uproot.iterate(
-        f"{file_path}:Events",
-        expressions=read_vars, 
-        step_size=chunk_size,
-        num_workers=6
-    )
+    delayed_pd_chunks = [dask.delayed(to_pandas_chunk)(chunk) for chunk in ak_record.to_delayed()]
+    df = dd.from_delayed(delayed_pd_chunks)
 
-    for arrays in tqdm(iterator, total=total_chunks, desc=f"Reading {base_name} ({jet_type})", unit="chunk"):
-        if use_subjets:
-            # Require 2 subjets if subjets used
-            mask = arrays[n_subjet_var] == 2
-            arrays = arrays[mask]
-                
-        for var in variables:
-            if "_Subjet_" in var and use_subjets:
-                accumulated_data[f"{var}_1"].append(np.ravel(ak.to_numpy(arrays[var][:, 0])))
-                accumulated_data[f"{var}_2"].append(np.ravel(ak.to_numpy(arrays[var][:, 1])))
-            else:
-                if var in out_vars:
-                    accumulated_data[var].append(np.ravel(ak.to_numpy(arrays[var])))
-
-    print("Merging arrays and building DataFrame...")
-    final_dict = {var: np.concatenate(accumulated_data[var]) for var in out_vars}
-    df = pd.DataFrame(final_dict)
     df["label"] = label
-    
-    n_before = len(df)
-    df = df.replace([np.inf, -np.inf], np.nan).dropna()
-    print(f"Dropped {n_before - len(df)} rows with NaN/inf ({100*(n_before-len(df))/n_before:.2f}%)")
+    df["weight"] = weight
+    df["process"] = process_name
 
-    os.makedirs(os.path.dirname(cache_file), exist_ok=True)
-    df.to_parquet(cache_file)
-    
+    float_cols = [c for c in df.columns if df.dtypes[c] == "float64"]
+    if float_cols:
+        df[float_cols] = df[float_cols].astype(np.float32)
+
+    df = df.replace([np.inf, -np.inf], np.nan).dropna()
+    df["event"] = df["event"].astype(np.int64) + event_offset
     return df
 
-## Cross secions of signals in pb
 XSEC_DICT = {
-    "TTto4Q": 377.96,
-    "TTtoLNu2Q": 365.34,
-    "TTto2L2Nu": 88.29,
-    "DYto2Tau": 6077.22,
+    "TTto4Q": 419.7,         # NNLO+NNLL inclusive ttbar * BR(W->qq)^2
+    "TTtoLNu2Q": 405.7,      # NNLO+NNLL inclusive ttbar * 2*BR(W->qq)*BR(W->lv)
+    "TTto2L2Nu": 98,       # NNLO+NNLL inclusive ttbar * BR(W->lv)^2
+    "DYto2Tau": 2125,      # NNLO DYJetsToLL M > 50 GeV
+    
+    
+    "VBF": 0.02939443, 
+    "ggF": 51.72
 }
 
 LUMI_FB = 137.0
 
-def load_mixed_fatjet_data(paths, label, jet_type="AK8", use_subjets=False, force_rebuild=False, variables=None):
+PROCESS_OFFSETS = {
+    "jets": 0,
+    "TTto4Q": 100_000_000,
+    "TTtoLNu2Q": 200_000_000,
+    "TTto2L2Nu": 300_000_000,
+    "DYto2Tau": 400_000_000,
+}
+
+def load_mixed_fatjet_data(paths, label, jet_type="AK8", use_subjets=False, variables=None, apply_weights=True):
 
     if variables is not None:
         variables = sorted(variables)
 
-
-    paths_str = ",".join(sorted(paths))
-    vars_str = ",".join(variables) if variables else "default"
-    config_string = f"{paths_str}_{label}_{jet_type}_subjets{use_subjets}_{vars_str}"
-    config_hash = hashlib.md5(config_string.encode('utf-8')).hexdigest()[:8]
-    
-    cache_file = f"data_cache/mixed_data_cache_{jet_type}_{config_hash}.parquet"
-
-    if not force_rebuild and os.path.exists(cache_file):
-        return pd.read_parquet(cache_file)
-
-    dfs = []
     lumi_pb = LUMI_FB * 1000.0 
+    all_dfs = []
+    
 
     for path in paths:
-        bg_match = next((key for key in XSEC_DICT.keys() if key in path), None)        
-        if bg_match:
-            name = bg_match
-            with uproot.open(f"{path}:Events") as raw_tree:
-                n_gen = raw_tree.num_entries
-                
-            weight = (XSEC_DICT[name] * lumi_pb) / n_gen if n_gen > 0 else 1
-            print(f"Sample {name}: N_gen={n_gen}, Weight={weight:.6e}")
-            
-        else:
-            name = os.path.basename(path).replace(".root", "")
-            weight = 1.0 
-            print(f"Sample {name}: Weight={weight:.6e} (Unweighted)")
+        name = os.path.basename(path).replace(".root", "")
+        weight = 1.0
 
-        df = load_fatjet_data(
-            file_path=path,
+        if apply_weights:
+            bg_match = next((key for key in XSEC_DICT.keys() if key in path), None)        
+            if bg_match:
+                name = bg_match
+                with uproot.open(f"{path}:Events") as raw_tree:
+                    n_gen = raw_tree["NRawEvents"].array(library="np", entry_stop=1)[0]
+                weight = (XSEC_DICT[name] * lumi_pb) / n_gen if n_gen > 0 else 1.0
+                print(f"Sample {name}: N_gen={n_gen}, Weight={weight:.6e}")
+            else:
+                print(f"Sample {name}: Weight={weight:.6e}")
+
+        offset = PROCESS_OFFSETS.get(name, PROCESS_OFFSETS.get("jets", 0))
+
+        df_lazy = load_fatjet_data(
+            file_path=path, 
             label=label,
-            jet_type=jet_type,
-            use_subjets=use_subjets,
-            force_rebuild=force_rebuild,
+            event_offset=offset,
+            weight=weight, 
+            process_name=name, 
+            jet_type=jet_type, 
+            use_subjets=use_subjets, 
             variables=variables
         )
+        
+        all_dfs.append(df_lazy)
 
-        df["weight"] = weight
-        df["process"] = name
-
-        dfs.append(df)
-
-    print("\nMerging all samples into mixed DataFrame...")
-    df_mixed = pd.concat(dfs, ignore_index=True)
-    
-    os.makedirs(os.path.dirname(cache_file), exist_ok=True)
-    df_mixed.to_parquet(cache_file)
-
-    return df_mixed
+    return dd.concat(all_dfs) if all_dfs else None

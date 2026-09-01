@@ -12,19 +12,29 @@ VAR_SETS = {
     }
 }
 
-config.setdefault("sig", "TauHadHad")
-config.setdefault("sig_generator", "POWHEG")
+# -----------------------
+# CONFIG
+# ----------------------
+config.setdefault("sigs", ["Tau", "fatJet", "AK15"]) 
+config.setdefault("channel", "mix")
+config.setdefault("sig_generator", "MADGRAPH")
 config.setdefault("bg", "TTto4Q")
-config.setdefault("num_taus", 1)
+config.setdefault("num_taus", 2)
 config.setdefault("use_subjets", False)
-config.setdefault("seed", 100)
 config.setdefault("cms_label", "Work in Progress")
-config.setdefault("variables", "")
-config.setdefault("compare_modes", ["AK8", "AK15"])
 config.setdefault("compare_names", None)
 config.setdefault("use_all", True)
 config.setdefault("use_weights", False)
+config.setdefault("variables", "")
 config.setdefault("fpr", [1.0])
+
+raw_sigs = config["sigs"]
+if isinstance(raw_sigs, str):
+    SIG_BASES = [s.strip() for s in raw_sigs.split(",")]
+elif not isinstance(raw_sigs, list):
+    SIG_BASES = [raw_sigs]
+else:
+    SIG_BASES = raw_sigs
 
 raw_fprs = config["fpr"]
 if isinstance(raw_fprs, str):
@@ -35,203 +45,138 @@ elif not isinstance(raw_fprs, list):
 FPRS = [float(f) for f in raw_fprs]
 FPR_STRS = [f"{f:.6f}" for f in FPRS]
 
+CHANNEL = config["channel"]
 SIG_GENERATOR = config["sig_generator"]
-SIG_NAME = config["sig"]
-BG_NAME = config["bg"]
 USE_SUBJETS = config["use_subjets"]
 NUM_TAUS = config["num_taus"]
-SEED = config["seed"]
 USE_WEIGHTS = config["use_weights"]
-
-SIG_BASE_DIR = f"/eos/user/m/mroine/NanoTuples/Htautau/data_workflow/jets/{SIG_GENERATOR}"
-SIGNAL_DATA_DIRS = {
-    "TauHadHad": f"{SIG_BASE_DIR}/Tau_hadhad.root",
-    "fatJet_hadhad": f"{SIG_BASE_DIR}/fatJet_hadhad.root",
-    "AK15_hadhad": f"{SIG_BASE_DIR}/AK15_hadhad.root",
-    "Tau": f"{SIG_BASE_DIR}/Tau.root",
-    "fatJet": f"{SIG_BASE_DIR}/fatJet.root",
-    "AK15": f"{SIG_BASE_DIR}/AK15.root"
-}
-
-if SIG_NAME not in SIGNAL_DATA_DIRS:
-    raise ValueError(f"Signal {SIG_NAME} not found. Available signals: {list(SIGNAL_DATA_DIRS.keys())}")
-if BG_NAME not in VALID_BGS:
-    raise ValueError(f"Background {BG_NAME} not found. Available backgrounds: {VALID_BGS}")
-
-if "Tau" in SIG_NAME:
-    MODE = "Tau"
-    bg_prefix = "TauBG"
-elif "fatJet" in SIG_NAME:
-    MODE = "AK8"
-    bg_prefix = "fatJetBG"
-elif "AK15" in SIG_NAME:
-    MODE = "AK15"
-    bg_prefix = "AK15BG"
-
-SIG_PATH = SIGNAL_DATA_DIRS[SIG_NAME]
-BG_PATH = f"{BG_BASE_DIR}/{BG_NAME}/{bg_prefix}_{BG_NAME}.root"
-
-
-
-
 VAR_DIR_PREFIX = f"{config['variables']}/" if config["variables"] != "" else ""
 VAR_SUFFIX = f"_{config['variables']}Vars" if config["variables"] != "" else ""
-
-def get_vars_for_mode(mode, var_set_name):
-    if var_set_name == "all" or var_set_name not in VAR_SETS:
-        return []
-    return VAR_SETS[var_set_name].get(mode, [])
-
-CURRENT_VARS = get_vars_for_mode(MODE, config["variables"])
-VAR_FLAG = f"--variables {' '.join(CURRENT_VARS)}" if CURRENT_VARS else ""
 
 SUBJET_FLAG = "--use_subjets" if USE_SUBJETS else ""
 WEIGHT_FLAG = "--use_weights" if USE_WEIGHTS else ""
 WEIGHT_SUFFIX = "weighted" if USE_WEIGHTS else "unweighted"
-
-sub_str = "wSubjets" if USE_SUBJETS else "noSubjets"
-channel_dir = "hadhad" if "_hadhad" in SIG_PATH else "mix"
-OUT_DIR = f"results/{VAR_DIR_PREFIX}{channel_dir}/{SIG_GENERATOR}/{BG_NAME}/{sub_str}"
-
-if MODE == "Tau":
-    MODE_STR = f"tau_{NUM_TAUS}taus"
-    SHORT_MODE_STR = f"tau_{NUM_TAUS}taus"
-else:
-    MODE_STR = f"{MODE}_{sub_str}"
-    SHORT_MODE_STR = MODE
-
-COMPARE_MODES = config["compare_modes"]
-
-
-
-COMPARE_NAMES = config["compare_names"] or COMPARE_MODES
 USE_ALL_FLAG = "--use_all" if config["use_all"] else ""
+sub_str = "wSubjets" if USE_SUBJETS else "noSubjets"
 
-if channel_dir == "hadhad":
-    MODE_TO_SIG = {
-        "Tau": "TauHadHad",
-        "AK8": "fatJet_hadhad",
-        "AK15": "AK15_hadhad",
-    }
-    raw_sig_filename = "RawEventInfo_hadhad.root"
-else:
-    MODE_TO_SIG = {
-        "Tau": "Tau",
-        "AK8": "fatJet",
-        "AK15": "AK15",
-    }
-    raw_sig_filename = "RawEventInfo.root"
+RAW_BG_INPUT = config["bg"]
+BG_LIST = [b.strip() for b in RAW_BG_INPUT.split(",")]
+for bg in BG_LIST:
+    if bg not in VALID_BGS:
+        raise ValueError(f"Background {bg} not found: {VALID_BGS}")
+BG_DIR_NAME = "_".join(BG_LIST)
+BG_NAME = config["bg"]
 
-MODE_TO_BG_PREFIX = {
-    "Tau": "TauBG",
-    "AK8": "fatJetBG",
-    "AK15": "AK15BG",
-}
+# -----------------------------
+# GENERATE PATHS
+# ------------------------------
 
+SIG_BASE_DIR = f"/eos/user/m/mroine/NanoTuples/Htautau/data_workflow/jets/{SIG_GENERATOR}"
+
+OUT_DIR = f"results/{VAR_DIR_PREFIX}{CHANNEL}/{SIG_GENERATOR}/{BG_DIR_NAME}/{sub_str}"
+
+def mode_from_base(base):
+    if base == "Tau": return "Tau"
+    if base == "fatJet": return "AK8"
+    if base == "AK15": return "AK15"
+    raise ValueError(f"Unknown signal base {base}")
+
+def base_from_mode(mode):
+    if mode == "Tau": return "Tau"
+    if mode == "AK8": return "fatJet"
+    if mode == "AK15": return "AK15"
+
+COMPARE_MODES = [mode_from_base(b) for b in SIG_BASES]
+COMPARE_NAMES = config["compare_names"] or COMPARE_MODES
+MODE_TO_BG_PREFIX = {"Tau": "TauBG", "AK8": "fatJetBG", "AK15": "AK15BG"}
+
+raw_sig_filename = "RawEventInfo_hadhad.root" if CHANNEL == "hadhad" else "RawEventInfo.root"
 RAW_SIG_PATH = f"{SIG_BASE_DIR}/{raw_sig_filename}"
+RAW_BG_FILES = [f"{BG_BASE_DIR}/{bg}/RawEventInfoBG_{bg}.root" for bg in BG_LIST]
+RAW_BG_ARG_STR = ",".join(RAW_BG_FILES)
 
-RUN_ID = f"{SIG_NAME}_{SHORT_MODE_STR}_seed{SEED}_{WEIGHT_SUFFIX}{VAR_SUFFIX}"
+def sig_path_for_mode(mode):
+    base = base_from_mode(mode)
+    suffix = "_hadhad.root" if CHANNEL == "hadhad" else ".root"
+    return f"{SIG_BASE_DIR}/{base}{suffix}"
+
+def get_bg_files_for_mode(mode):
+    return [f"{BG_BASE_DIR}/{bg}/{MODE_TO_BG_PREFIX[mode]}_{bg}.root" for bg in BG_LIST]
+
+def bg_arg_for_mode(mode):
+    return ",".join(get_bg_files_for_mode(mode))
+
+def get_vars_for_mode(mode, var_set_name):
+    if var_set_name == "all" or var_set_name not in VAR_SETS: return []
+    return VAR_SETS[var_set_name].get(mode, [])
+
+def mode_str(mode):
+    return f"tau_{NUM_TAUS}taus" if mode == "Tau" else mode
+
+def run_id_for_mode(mode):
+    return f"{base_from_mode(mode)}_{mode_str(mode)}_{WEIGHT_SUFFIX}{VAR_SUFFIX}"
+
+def get_model_file(mode):
+    return f"{OUT_DIR}/bdt_{run_id_for_mode(mode)}.json"
+
+def get_parquet_file(mode):
+    return f"{OUT_DIR}/inference_results_{run_id_for_mode(mode)}.parquet"
+
 
 COMPARE_ID = (
     f"cmp_{'_'.join(COMPARE_MODES)}"
-    f"_{'all' if config['use_all'] else f'seed{SEED}'}"
-    f"_{WEIGHT_SUFFIX}" 
-    f"{VAR_SUFFIX}"
+    f"_{'all' if config['use_all'] else ''}"
+    f"_{WEIGHT_SUFFIX}{VAR_SUFFIX}"
 )
-
 if NUM_TAUS > 1:
-    COMPARE_ID.replace("Tau", "TauPair")
+    COMPARE_ID = COMPARE_ID.replace("Tau", "TauPair")
 
-def mode_str(mode):
-    if mode == "Tau":
-        return f"tau_{NUM_TAUS}taus"
-    return mode
-
-def run_id_for_mode(mode):
-    sig_name = MODE_TO_SIG[mode]
-    return (
-        f"{sig_name}_{mode_str(mode)}"
-        f"_seed{SEED}_{WEIGHT_SUFFIX}{VAR_SUFFIX}"
-    )
-
-def sig_path_for_mode(mode):
-    return SIGNAL_DATA_DIRS[MODE_TO_SIG[mode]]
-
-def bg_path_for_mode(mode):
-    return f"{BG_BASE_DIR}/{BG_NAME}/{MODE_TO_BG_PREFIX[mode]}_{BG_NAME}.root"
-
-# make shit compatible w/ my legacy model naming conventions
-def get_model_file(mode):
-    sig_name = MODE_TO_SIG[mode]
-    
-
-    r_id = run_id_for_mode(mode)
-    mode_channel_dir = "hadhad" if "_hadhad" in sig_path_for_mode(mode) else "mix"
-    mode_out_dir = f"results/{VAR_DIR_PREFIX}{mode_channel_dir}/{SIG_GENERATOR}/{BG_NAME}/{sub_str}"
-    
-    newnew_path = f"{mode_out_dir}/bdt_{r_id}.json"
-    new_path = f"results/bdt_{r_id}.json"
-    
-    if mode == "Tau":
-        legacy_m_str = f"tau_{NUM_TAUS}taus"
-    else:
-        legacy_m_str = f"{mode}_{sub_str}"
-
-    mix_path = f"{OUT_DIR}/bdt_{sig_name}_{SIG_GENERATOR}_vs_{BG_NAME}_{legacy_m_str}_seed{SEED}_{WEIGHT_SUFFIX}{VAR_SUFFIX}.json"
-    standard_path = f"results/bdt_{sig_name}_{SIG_GENERATOR}_vs_{BG_NAME}_{legacy_m_str}_seed{SEED}_{WEIGHT_SUFFIX}{VAR_SUFFIX}.json"
-    legacy_path = f"results/bdt_{sig_name}_vs_{BG_NAME}_{legacy_m_str}_seed{SEED}_{WEIGHT_SUFFIX}{VAR_SUFFIX}.json"
-
-    if os.path.exists(newnew_path):
-        return newnew_path
-    elif os.path.exists(new_path):
-        return new_path
-    elif os.path.exists(mix_path):
-        return mix_path
-    elif os.path.exists(standard_path):
-        return standard_path
-    elif os.path.exists(legacy_path):
-        return legacy_path
-        
-    return newnew_path
-
+# -----------------
+# RULES
+# -----------
 
 rule all:
     input:
-        f"{OUT_DIR}/corr_sig_{SIG_NAME}_{SHORT_MODE_STR}{VAR_SUFFIX}.png",
-        f"{OUT_DIR}/corr_bg_{BG_NAME}_{SHORT_MODE_STR}{VAR_SUFFIX}.png",
-        f"{OUT_DIR}/bdt_{RUN_ID}.json",
-        f"{OUT_DIR}/roc_{RUN_ID}.png",
-        f"{OUT_DIR}/feat_{RUN_ID}.png",
-        f"{OUT_DIR}/conf_{RUN_ID}.png",
-        f"{OUT_DIR}/auc_pt_{RUN_ID}.png",
-        f"{OUT_DIR}/auc_pt_compare_{COMPARE_ID}.png",
+        [f"{OUT_DIR}/roc_{run_id_for_mode(m)}.png" for m in COMPARE_MODES],
+        [f"{OUT_DIR}/feat_{run_id_for_mode(m)}.png" for m in COMPARE_MODES],
+        [f"{OUT_DIR}/conf_{run_id_for_mode(m)}.png" for m in COMPARE_MODES],
+        [f"{OUT_DIR}/auc_pt_single_{run_id_for_mode(m)}.png" for m in COMPARE_MODES],
+        [get_parquet_file(m) for m in COMPARE_MODES],
+        
         expand(f"{OUT_DIR}/auc_pt_compare_{COMPARE_ID}_FPR{{fpr_str}}.png", fpr_str=FPR_STRS),
-        expand(f"{OUT_DIR}/tagging_eff_compare_{COMPARE_ID}_matched_FPR{{fpr_str}}.png", fpr_str=FPR_STRS),
-        expand(f"{OUT_DIR}/tagging_eff_compare_{COMPARE_ID}_absolute_FPR{{fpr_str}}.png", fpr_str=FPR_STRS),
         expand(f"{OUT_DIR}/sigeff_pt_compare_{COMPARE_ID}_FPR{{fpr_str}}.png", fpr_str=FPR_STRS),
-        expand(f"{OUT_DIR}/abs_eval_auc_pt_{COMPARE_ID}_FPR{{fpr_str}}.png", fpr_str=FPR_STRS),
-        expand(f"{OUT_DIR}/abs_eval_roc_{COMPARE_ID}_FPR{{fpr_str}}.png", fpr_str=FPR_STRS),
-        expand(f"{OUT_DIR}/abs_eval_sigeff_pt_{COMPARE_ID}_FPR{{fpr_str}}.png", fpr_str=FPR_STRS)
+        expand(f"{OUT_DIR}/tagging_eff_compare_{COMPARE_ID}_FPR{{fpr_str}}_matched.png", fpr_str=FPR_STRS),
+        expand(f"{OUT_DIR}/tagging_eff_compare_{COMPARE_ID}_FPR{{fpr_str}}_absolute.png", fpr_str=FPR_STRS),
+        
+        f"{OUT_DIR}/abs_eval_roc_{COMPARE_ID}.png",
+        f"{OUT_DIR}/abs_eval_rej_{COMPARE_ID}.png",
+        
+        expand(f"{OUT_DIR}/abs_eval_sigeff_pt_{COMPARE_ID}_FPR{{fpr_str}}.png", fpr_str=FPR_STRS),
 
+def get_mode_from_rid(r_id):
+    for m in COMPARE_MODES:
+        if run_id_for_mode(m) == r_id: return m
+    raise ValueError(f"Unknown r_id {r_id}")
 
 rule plot_correlations:
     input:
-        sig = SIG_PATH,
-        bg = BG_PATH
+        sig = lambda w: sig_path_for_mode(mode_from_base(w.base_sig)),
+        bg = lambda w: get_bg_files_for_mode(mode_from_base(w.base_sig))
     output:
-        sig_corr = f"{OUT_DIR}/corr_sig_{SIG_NAME}_{SHORT_MODE_STR}{VAR_SUFFIX}.png",
-        bg_corr = f"{OUT_DIR}/corr_bg_{BG_NAME}_{SHORT_MODE_STR}{VAR_SUFFIX}.png"
+        sig_corr = f"{OUT_DIR}/corr_sig_{{base_sig,[^_]+}}_{{short_mode}}{VAR_SUFFIX}.png",
+        bg_corr = f"{OUT_DIR}/corr_bg_{BG_DIR_NAME}_{{base_sig,[^_]+}}_{{short_mode}}{VAR_SUFFIX}.png"
     params:
-        mode = MODE,
+        bg_arg = lambda w: bg_arg_for_mode(mode_from_base(w.base_sig)),
+        mode = lambda w: mode_from_base(w.base_sig),
         num_taus = NUM_TAUS,
         subjet_flag = SUBJET_FLAG,
         cms_label = config["cms_label"],
-        var_flag = VAR_FLAG
+        var_flag = lambda w: f"--variables {' '.join(get_vars_for_mode(mode_from_base(w.base_sig), config['variables']))}" if get_vars_for_mode(mode_from_base(w.base_sig), config['variables']) else ""
     shell:
         """
         python correlations.py \
             --sig {input.sig} \
-            --bg {input.bg} \
+            --bg {params.bg_arg} \
             --out_sig {output.sig_corr} \
             --out_bg {output.bg_corr} \
             --mode {params.mode} \
@@ -243,60 +188,75 @@ rule plot_correlations:
 
 rule train_bdt:
     input:
-        sig = SIG_PATH,
-        bg = BG_PATH
+        sig = lambda w: sig_path_for_mode(get_mode_from_rid(w.r_id)),
+        bg = lambda w: get_bg_files_for_mode(get_mode_from_rid(w.r_id))
     output:
-        model = f"{OUT_DIR}/bdt_{RUN_ID}.json"
+        model = f"{OUT_DIR}/bdt_{{r_id}}.json"
     params:
-        mode = MODE,
+        bg_arg = lambda w: bg_arg_for_mode(get_mode_from_rid(w.r_id)),
+        mode = lambda w: get_mode_from_rid(w.r_id),
         num_taus = NUM_TAUS,
         subjet_flag = SUBJET_FLAG,
-        seed = SEED,
-        var_flag = VAR_FLAG
+        var_flag = lambda w: f"--variables {' '.join(get_vars_for_mode(get_mode_from_rid(w.r_id), config['variables']))}" if get_vars_for_mode(get_mode_from_rid(w.r_id), config['variables']) else ""
+    threads: 4
     shell:
         """
         python train_BDT.py \
             --sig {input.sig} \
-            --bg {input.bg} \
+            --bg {params.bg_arg} \
             --out_model {output.model} \
             --mode {params.mode} \
             {params.subjet_flag} \
             --num_taus {params.num_taus} \
-            --seed {params.seed} \
+            --n_workers {threads} \
             {params.var_flag}
         """
 
 rule bdt_inference:
     input:
-        sig = SIG_PATH,
-        bg = BG_PATH,
-        model = f"{OUT_DIR}/bdt_{RUN_ID}.json"
+        roc = expand(f"{OUT_DIR}/roc_{{r_id}}.png", r_id=[run_id_for_mode(m) for m in COMPARE_MODES]),
+        feat = expand(f"{OUT_DIR}/feat_{{r_id}}.png", r_id=[run_id_for_mode(m) for m in COMPARE_MODES]),
+        conf = expand(f"{OUT_DIR}/conf_{{r_id}}.png", r_id=[run_id_for_mode(m) for m in COMPARE_MODES]),
+        auc_pt = expand(f"{OUT_DIR}/auc_pt_single_{{r_id}}.png", r_id=[run_id_for_mode(m) for m in COMPARE_MODES]),
+        parquet = expand(f"{OUT_DIR}/inference_results_{{r_id}}.parquet", r_id=[run_id_for_mode(m) for m in COMPARE_MODES])
+
+rule run_bdt_inference:
+    input:
+        sig = lambda w: sig_path_for_mode(get_mode_from_rid(w.r_id)),
+        bg = lambda w: get_bg_files_for_mode(get_mode_from_rid(w.r_id)),
+        model = f"{OUT_DIR}/bdt_{{r_id}}.json",
     output:
-        roc = f"{OUT_DIR}/roc_{RUN_ID}.png",
-        feat = f"{OUT_DIR}/feat_{RUN_ID}.png",
-        conf = f"{OUT_DIR}/conf_{RUN_ID}.png",
-        auc_pt = f"{OUT_DIR}/auc_pt_{RUN_ID}.png"
+        roc = f"{OUT_DIR}/roc_{{r_id}}.png",
+        feat = f"{OUT_DIR}/feat_{{r_id}}.png",
+        conf = f"{OUT_DIR}/conf_{{r_id}}.png",
+        auc_pt = f"{OUT_DIR}/auc_pt_single_{{r_id}}.png",
+        parquet = f"{OUT_DIR}/inference_results_{{r_id}}.parquet"
     params:
-        mode = MODE,
+        bg_arg = lambda w: bg_arg_for_mode(get_mode_from_rid(w.r_id)),
+        mode = lambda w: get_mode_from_rid(w.r_id),
         num_taus = NUM_TAUS,
         subjet_flag = SUBJET_FLAG,
-        seed = SEED,
-        var_flag = VAR_FLAG
+        cms_label = config["cms_label"],
+        var_flag = lambda w: f"--variables {' '.join(get_vars_for_mode(get_mode_from_rid(w.r_id), config['variables']))}" if get_vars_for_mode(get_mode_from_rid(w.r_id), config['variables']) else ""
+    threads: 4
     shell:
         """
         python BDT_inference.py \
             --sig {input.sig} \
-            --bg {input.bg} \
+            --bg {params.bg_arg} \
             --model {input.model} \
+            --out_parquet {output.parquet} \
             --out_roc {output.roc} \
             --out_feat {output.feat} \
             --out_conf {output.conf} \
             --out_auc_pt {output.auc_pt} \
+            --cms_label "{params.cms_label}" \
             --mode {params.mode} \
             {params.subjet_flag} \
             --num_taus {params.num_taus} \
-            --seed {params.seed} \
-            {params.var_flag}
+            {params.var_flag} \
+            --n_workers {threads} \
+            {WEIGHT_FLAG}
         """
 
 rule compare_bdts:
@@ -306,9 +266,7 @@ rule compare_bdts:
 
 rule run_compare_bdts:
     input:
-        models = [get_model_file(m) for m in COMPARE_MODES],
-        sigs = [sig_path_for_mode(m) for m in COMPARE_MODES],
-        bgs = [bg_path_for_mode(m) for m in COMPARE_MODES],
+        parquets = [get_parquet_file(m) for m in COMPARE_MODES]
     output:
         plot_auc = f"{OUT_DIR}/auc_pt_compare_{COMPARE_ID}_FPR{{fpr_str}}.png",
         plot_sig_eff = f"{OUT_DIR}/sigeff_pt_compare_{COMPARE_ID}_FPR{{fpr_str}}.png"
@@ -317,30 +275,27 @@ rule run_compare_bdts:
         names = COMPARE_NAMES,
         num_taus = NUM_TAUS,
         subjet_flag = SUBJET_FLAG,
-        seed = SEED,
         use_all_flag = USE_ALL_FLAG,
-        bg_name = BG_NAME,
+        bg_name = BG_DIR_NAME,
         fpr = lambda wildcards: float(wildcards.fpr_str) / 100.0,
-        weight_flag = WEIGHT_FLAG
+        weight_flag = WEIGHT_FLAG,
+        cms_label = config["cms_label"]
     shell:
         """
         python BDT_inference_fair.py \
-            --sigs {input.sigs} \
-            --bgs {input.bgs} \
-            --models {input.models} \
+            --parquets {input.parquets} \
             --modes {params.modes} \
             --names {params.names} \
             --out_plot {output.plot_auc} \
             --out_eff_plot {output.plot_sig_eff} \
+            --cms_label "{params.cms_label}" \
             --bg_mode {params.bg_name} \
             --num_taus {params.num_taus} \
-            --seed {params.seed} \
             --fpr {params.fpr} \
             {params.subjet_flag} \
             {params.use_all_flag} \
             {params.weight_flag}
         """
-
 
 rule compare_tagging_effs:
     input:
@@ -349,9 +304,7 @@ rule compare_tagging_effs:
 
 rule run_compare_tagging_eff:
     input:
-        models = [get_model_file(m) for m in COMPARE_MODES],
-        sigs = [sig_path_for_mode(m) for m in COMPARE_MODES],
-        bgs = [bg_path_for_mode(m) for m in COMPARE_MODES],
+        parquets = [get_parquet_file(m) for m in COMPARE_MODES],
         raw_sig = RAW_SIG_PATH
     output:
         matched = f"{OUT_DIR}/tagging_eff_compare_{COMPARE_ID}_FPR{{fpr_str}}_matched.png",
@@ -361,25 +314,27 @@ rule run_compare_tagging_eff:
         names = COMPARE_NAMES,
         num_taus = NUM_TAUS,
         subjet_flag = SUBJET_FLAG,
-        seed = SEED,
         base_plot_name = f"{OUT_DIR}/tagging_eff_compare_{COMPARE_ID}_FPR{{fpr_str}}.png",
         fpr = lambda wildcards: float(wildcards.fpr_str) / 100.0,
-        bg_name = BG_NAME
+        bg_name = BG_DIR_NAME,
+        weight_flag = WEIGHT_FLAG,
+        cms_label = config["cms_label"],
+        
     shell:
         """
         python tagging_efficiency.py \
-            --sigs {input.sigs} \
-            --bgs {input.bgs} \
+            --parquets {input.parquets} \
             --bg_mode {params.bg_name} \
-            --models {input.models} \
             --modes {params.modes} \
             --names {params.names} \
             --raw_sig {input.raw_sig} \
+            --cms_label "{params.cms_label}" \
             --out_plot {params.base_plot_name} \
             --num_taus {params.num_taus} \
-            --seed {params.seed} \
             --fpr {params.fpr} \
-            {params.subjet_flag}
+            --use_all {USE_ALL_FLAG} \
+            {params.subjet_flag} \
+            {params.weight_flag}
         """
 
 rule absolute_evaluation:
@@ -389,114 +344,134 @@ rule absolute_evaluation:
         expand(f"{OUT_DIR}/abs_eval_sigeff_pt_{COMPARE_ID}_FPR{{fpr_str}}.png", fpr_str=FPR_STRS),
         f"{OUT_DIR}/abs_eval_sigeff_pt_{COMPARE_ID}_animation.gif"
 
+rule absolute_roc:
+    input:
+        f"{OUT_DIR}/abs_eval_roc_{COMPARE_ID}.png"
+
+rule absolute_eff:
+    input:
+        expand(f"{OUT_DIR}/abs_eval_sigeff_pt_{COMPARE_ID}_FPR{{fpr_str}}.png", fpr_str=FPR_STRS)
+
 rule run_absolute_evaluation_roc:
     input:
-        models = [get_model_file(m) for m in COMPARE_MODES],
-        sigs = [sig_path_for_mode(m) for m in COMPARE_MODES],
-        bgs = [bg_path_for_mode(m) for m in COMPARE_MODES],
+        parquets = [get_parquet_file(m) for m in COMPARE_MODES],
         raw_sig = RAW_SIG_PATH,
-        raw_bg = f"{BG_BASE_DIR}/{BG_NAME}/RawEventInfoBG_{BG_NAME}.root"
+        raw_bgs = RAW_BG_FILES
     output:
         plot_roc = f"{OUT_DIR}/abs_eval_roc_{COMPARE_ID}.png",
         plot_rej = f"{OUT_DIR}/abs_eval_rej_{COMPARE_ID}.png"
     params:
         modes = COMPARE_MODES,
+        raw_bg_arg = RAW_BG_ARG_STR,
         names = COMPARE_NAMES,
         num_taus = NUM_TAUS,
         subjet_flag = SUBJET_FLAG,
-        seed = SEED,
         use_all_flag = USE_ALL_FLAG,
-        bg_name = BG_NAME
+        bg_name = BG_DIR_NAME,
+        weight_flag = WEIGHT_FLAG,
+        cms_label = config["cms_label"]
     shell:
         """
         python theUltimateComparison.py \
-            --sigs {input.sigs} \
-            --bgs {input.bgs} \
-            --models {input.models} \
+            --parquets {input.parquets} \
             --modes {params.modes} \
             --names {params.names} \
             --raw_sig {input.raw_sig} \
-            --raw_bg {input.raw_bg} \
+            --raw_bg {params.raw_bg_arg} \
+            --cms_label "{params.cms_label}" \
             --bg_mode {params.bg_name} \
             --out_plot {output.plot_roc} \
             --out_rej_plot {output.plot_rej} \
             --num_taus {params.num_taus} \
-            --seed {params.seed} \
             {params.subjet_flag} \
-            {params.use_all_flag}
+            {params.use_all_flag} \
+            {params.weight_flag}
         """
 
 rule run_absolute_evaluation_eff:
     input:
-        models = [get_model_file(m) for m in COMPARE_MODES],
-        sigs = [sig_path_for_mode(m) for m in COMPARE_MODES],
-        bgs = [bg_path_for_mode(m) for m in COMPARE_MODES],
+        parquets = [get_parquet_file(m) for m in COMPARE_MODES],
         raw_sig = RAW_SIG_PATH,
-        raw_bg = f"{BG_BASE_DIR}/{BG_NAME}/RawEventInfoBG_{BG_NAME}.root"
+        raw_bgs = RAW_BG_FILES
     output:
         plot_eff = f"{OUT_DIR}/abs_eval_sigeff_pt_{COMPARE_ID}_FPR{{fpr_str}}.png"
     params:
+        raw_bg_arg = RAW_BG_ARG_STR,
         modes = COMPARE_MODES,
         names = COMPARE_NAMES,
         num_taus = NUM_TAUS,
         subjet_flag = SUBJET_FLAG,
-        seed = SEED,
         use_all_flag = USE_ALL_FLAG,
-        bg_name = BG_NAME,
+        bg_name = BG_DIR_NAME,
+        cms_label = config["cms_label"],
         fpr = lambda wildcards: float(wildcards.fpr_str) / 100.0
     shell:
         """
         python AbsoluteEfficiency.py \
-            --sigs {input.sigs} \
-            --bgs {input.bgs} \
-            --models {input.models} \
+            --parquets {input.parquets} \
             --modes {params.modes} \
             --names {params.names} \
             --raw_sig {input.raw_sig} \
-            --raw_bg {input.raw_bg} \
+            --raw_bg {params.raw_bg_arg} \
             --bg_mode {params.bg_name} \
             --out_plot {output.plot_eff} \
+            --cms_label "{params.cms_label}" \
             --num_taus {params.num_taus} \
-            --seed {params.seed} \
             --fpr {params.fpr} \
             {params.subjet_flag} \
-            {params.use_all_flag}
+            {params.use_all_flag} \
+            {WEIGHT_FLAG}
         """
-
 
 rule run_absolute_evaluation_animation:
     input:
-        models = [get_model_file(m) for m in COMPARE_MODES],
-        sigs = [sig_path_for_mode(m) for m in COMPARE_MODES],
-        bgs = [bg_path_for_mode(m) for m in COMPARE_MODES],
+        parquets = [get_parquet_file(m) for m in COMPARE_MODES],
         raw_sig = RAW_SIG_PATH,
-        raw_bg = f"{BG_BASE_DIR}/{BG_NAME}/RawEventInfoBG_{BG_NAME}.root"
+        raw_bgs = RAW_BG_FILES
     output:
         plot_anim = f"{OUT_DIR}/abs_eval_sigeff_pt_{COMPARE_ID}_animation.gif"
     params:
+        raw_bg_args = RAW_BG_ARG_STR,
         modes = COMPARE_MODES,
         names = COMPARE_NAMES,
         num_taus = NUM_TAUS,
         subjet_flag = SUBJET_FLAG,
-        seed = SEED,
         use_all_flag = USE_ALL_FLAG,
         frames = 50,
-        bg_name = BG_NAME
+        bg_name = BG_DIR_NAME,
+        cms_label = config["cms_label"]
     shell:
         """
         python createAbsoluteEffAnimation.py \
-            --sigs {input.sigs} \
-            --bgs {input.bgs} \
-            --models {input.models} \
+            --parquets {input.parquets} \
             --modes {params.modes} \
             --names {params.names} \
             --raw_sig {input.raw_sig} \
-            --raw_bg {input.raw_bg} \
+            --raw_bg {params.raw_bg_args} \
+            --cms_label "{params.cms_label}" \
             --bg_mode {params.bg_name} \
             --out_plot {output.plot_anim} \
             --num_taus {params.num_taus} \
-            --seed {params.seed} \
             --frames {params.frames} \
             {params.subjet_flag} \
             {params.use_all_flag}
+        """
+
+rule visualize_models:
+    input:
+        expand(f"{OUT_DIR}/random_trees_{COMPARE_ID}/{{mode}}", mode=COMPARE_MODES)
+
+rule run_visualize_models:
+    input:
+        model = lambda wildcards: get_model_file(wildcards.mode)
+    output:
+        out_dir = directory(f"{OUT_DIR}/random_trees_{COMPARE_ID}/{{mode}}")
+    params:
+        name = lambda wildcards: COMPARE_NAMES[COMPARE_MODES.index(wildcards.mode)]
+    shell:
+        """
+        python VisualizeTree.py \
+            --model_path {input.model} \
+            --model_name {params.name} \
+            --out_dir {output.out_dir}
         """
