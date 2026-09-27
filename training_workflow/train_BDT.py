@@ -28,7 +28,9 @@ def main():
         'distributed.worker.memory.spill': 0.70,
         'distributed.worker.memory.pause': 0.85, 
     })
-    client = Client(n_workers=int(args.n_workers), threads_per_worker=4, memory_limit='5GB')
+    # dashboard_address=":0" lets the OS pick a free port, so concurrent training
+    # jobs (e.g. several Snakemake jobs at once) don't collide on the default :8787.
+    client = Client(n_workers=int(args.n_workers), threads_per_worker=4, memory_limit='5GB', dashboard_address=":0")
     print(f"Dask client: {client.dashboard_link}")
 
 

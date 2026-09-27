@@ -243,17 +243,19 @@ rule pt_effs:
 rule run_jet_effs:
     input:
         raw  = lambda w: f"{DATA_MAP[w.dataset]}/RawEventInfo{w.suffix}.root",
-        ak4  = lambda w: f"{DATA_MAP[w.dataset]}/Jet{w.suffix}.root",
         ak8  = lambda w: f"{DATA_MAP[w.dataset]}/fatJet{w.suffix}.root",
         ak15 = lambda w: f"{DATA_MAP[w.dataset]}/AK15{w.suffix}.root",
         tau  = lambda w: f"{DATA_MAP[w.dataset]}/Tau{w.suffix}.root"
     output:
         plot = "plots/{dataset}/efficiencies/JetFatJetAK15_eff{suffix}.png"
     params:
-        is_hadhad = lambda w: "true" if w.suffix == "_hadhad" else "false"
+        is_hadhad = lambda w: "true" if w.suffix == "_hadhad" else "false",
+        # AK4 is legacy and excluded by default; only pass its file when it was
+        # actually produced upstream, so PlotEfficiencies.C can drop that series.
+        ak4 = lambda w: (f"{DATA_MAP[w.dataset]}/Jet{w.suffix}.root" if "AK4" in REQUESTED_JETS else "")
     shell:
         """
-        root -l -b -q 'PlotEfficiencies.C("{output.plot}", "{input.raw}", "{input.ak4}", "{input.ak8}", "{input.ak15}", "{input.tau}", {params.is_hadhad})'
+        root -l -b -q 'PlotEfficiencies.C("{output.plot}", "{input.raw}", "{params.ak4}", "{input.ak8}", "{input.ak15}", "{input.tau}", {params.is_hadhad})'
         """
 
 rule run_subjet_effs:
@@ -305,8 +307,6 @@ rule run_eff_diffs:
     input:
         raw_had  = lambda w: f"{DATA_MAP[w.dataset]}/RawEventInfo_hadhad.root",
         raw_inc  = lambda w: f"{DATA_MAP[w.dataset]}/RawEventInfo.root",
-        ak4_had  = lambda w: f"{DATA_MAP[w.dataset]}/Tau_hadhad.root",
-        ak4_inc  = lambda w: f"{DATA_MAP[w.dataset]}/Tau.root",
         ak8_had  = lambda w: f"{DATA_MAP[w.dataset]}/fatJet_hadhad.root",
         ak8_inc  = lambda w: f"{DATA_MAP[w.dataset]}/fatJet.root",
         ak15_had = lambda w: f"{DATA_MAP[w.dataset]}/AK15_hadhad.root",
@@ -336,7 +336,6 @@ rule run_decay_prod_fractions:
 rule run_channel_efficiencies:
     input:
         raw  = lambda w: f"{DATA_MAP[w.dataset]}/RawEventInfo.root",
-        ak4  = lambda w: f"{DATA_MAP[w.dataset]}/Jet.root",
         ak8  = lambda w: f"{DATA_MAP[w.dataset]}/fatJet.root",
         ak15 = lambda w: f"{DATA_MAP[w.dataset]}/AK15.root"
     output:
@@ -432,7 +431,7 @@ rule run_subjet_plot_bg:
 rule run_pt_effs:
     input:
         raw  = lambda w: f"{DATA_MAP[w.dataset]}/RawEventInfo{w.suffix}.root",
-        ak4  = lambda w: f"{DATA_MAP[w.dataset]}/Tau{w.suffix}.root",
+        tau  = lambda w: f"{DATA_MAP[w.dataset]}/Tau{w.suffix}.root",
         ak8  = lambda w: f"{DATA_MAP[w.dataset]}/fatJet{w.suffix}.root",
         ak15 = lambda w: f"{DATA_MAP[w.dataset]}/AK15{w.suffix}.root"
     params:
@@ -441,5 +440,5 @@ rule run_pt_effs:
         plot = "plots/{dataset}/efficiencies/JetFatJetAK15_recoeff{suffix}.png"
     shell:
         """
-        root -l -b -q 'PlotEff_OnlyPT.C("{params.output_dir}", "{input.raw}", "{input.ak4}", "{input.ak8}", "{input.ak15}")'
+        root -l -b -q 'PlotEff_OnlyPT.C("{params.output_dir}", "{input.raw}", "{input.tau}", "{input.ak8}", "{input.ak15}")'
         """

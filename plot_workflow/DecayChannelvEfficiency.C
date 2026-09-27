@@ -90,8 +90,9 @@ void DecayChannelvEfficiency(
         {"#mu-had", "is_truth_muhad == 1",  kBlue,  22}
     };
 
-    Jet jets[3] = {
-        {"Jet", "AK4",  Form("%s/Jet.root",    jet_path), "ak4_pt/genH_pt",  "genH_pt", 30.0},
+    // AK4 is legacy and was never actually plotted here (the loop below always
+    // skipped it), so its entry has been dropped rather than kept as dead wiring.
+    Jet jets[2] = {
         {"FatJet", "AK8", Form("%s/fatJet.root", jet_path), "fj_pt/genH_pt",   "genH_pt", 200.0},
         {"AK15", "AK15", Form("%s/AK15.root",   jet_path), "ak15_pt/genH_pt", "genH_pt", 150.0}
     };
@@ -102,12 +103,14 @@ void DecayChannelvEfficiency(
     const double fitLo = 200.0;
     const double fitHi = 800.0;
 
-    for (int j = 1; j < 3; ++j) {
-        c.cd(j); 
-        gPad->SetTopMargin(0.12); 
-        gPad->SetBottomMargin(0.24); 
-        gPad->SetLeftMargin(0.18);   
+    for (int j = 1; j <= 2; ++j) {
+        c.cd(j);
+        gPad->SetTopMargin(0.12);
+        gPad->SetBottomMargin(0.24);
+        gPad->SetLeftMargin(0.18);
         gPad->SetRightMargin(0.05);
+
+        const Jet& jet = jets[j - 1];
 
         TProfile* profs[3] = {nullptr, nullptr, nullptr};
         double Cfit[3], CfitErr[3], Nent[3], ffit[3];
@@ -115,8 +118,8 @@ void DecayChannelvEfficiency(
         for (int ch = 0; ch < 3; ++ch) {
             TString tag = Form("resp_%d_%d", j, ch);
             TH2F* h2 = new TH2F(tag + "_h2", "", nBins, vMin, vMax, 200, 0.0, 2.0);
-            TString expr = Form("%s:genH_pt", jets[j].ptExpr);
-            ProjectFromTree(jets[j].file, h2, expr.Data(), channels[ch].cut);
+            TString expr = Form("%s:genH_pt", jet.ptExpr);
+            ProjectFromTree(jet.file, h2, expr.Data(), channels[ch].cut);
 
             TProfile* p = h2->ProfileX(tag + "_prof");
             p->SetDirectory(0);
@@ -172,7 +175,7 @@ void DecayChannelvEfficiency(
         lab.SetTextFont(42); 
         lab.SetTextSize(0.040);
         lab.SetTextAlign(11); // Left-aligned
-        lab.DrawLatex(0.75, 0.82, jets[j].prettyLabel); 
+        lab.DrawLatex(0.75, 0.82, jet.prettyLabel);
         lab.DrawLatex(0.75, 0.76, Form("C = %.1f", Cshared));
 
         TLegend* legFit = new TLegend(0.48, 0.26, 0.92, 0.46); 

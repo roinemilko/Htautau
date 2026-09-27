@@ -1,5 +1,6 @@
 #include <iostream>
 #include <algorithm>
+#include <cmath>
 #include "TCanvas.h"
 #include "TLegend.h"
 #include "TStyle.h"
@@ -14,7 +15,7 @@
 
 void PlotEff_OnlyPT(const char* save_path = "/eos/user/m/mroine/NanoTuples/Htautau/plot_workflow/plots/POWHEG",
     const char* fRaw  = "/eos/user/m/mroine/NanoTuples/Htautau/data_workflow/jets/POWHEG/RawEventInfo_hadhad.root",
-    const char* fAK4  = "/eos/user/m/mroine/NanoTuples/Htautau/data_workflow/jets/POWHEG/Tau_hadhad.root",
+    const char* fTau  = "/eos/user/m/mroine/NanoTuples/Htautau/data_workflow/jets/POWHEG/Tau_hadhad.root",
     const char* fAK8  = "/eos/user/m/mroine/NanoTuples/Htautau/data_workflow/jets/POWHEG/fatJet_hadhad.root",
     const char* fAK15 = "/eos/user/m/mroine/NanoTuples/Htautau/data_workflow/jets/POWHEG/AK15_hadhad.root"
 ) {
@@ -42,16 +43,16 @@ void PlotEff_OnlyPT(const char* save_path = "/eos/user/m/mroine/NanoTuples/Htaut
         TString hPrefix = Form("pad%d", padNum);
 
         TH1F* h_den = new TH1F(hPrefix + "_den",  "", nBins, vMin, vMax);
-        TH1F* h_num_AK4 = new TH1F(hPrefix + "_ak4",  "", nBins, vMin, vMax);
+        TH1F* h_num_Tau = new TH1F(hPrefix + "_tau",  "", nBins, vMin, vMax);
         TH1F* h_num_AK8 = new TH1F(hPrefix + "_ak8",  "", nBins, vMin, vMax);
         TH1F* h_num_AK15 = new TH1F(hPrefix + "_ak15", "", nBins, vMin, vMax);
 
         ProjectFromTree(fRaw, h_den, rawVar, rawCut);
-        ProjectFromTree(fAK4, h_num_AK4, jetVar, jetCut);
+        ProjectFromTree(fTau, h_num_Tau, jetVar, jetCut);
         ProjectFromTree(fAK8, h_num_AK8, jetVar, jetCut);
         ProjectFromTree(fAK15, h_num_AK15, jetVar, jetCut);
 
-        TEfficiency* effAK4  = new TEfficiency(*h_num_AK4, *h_den);
+        TEfficiency* effTau  = new TEfficiency(*h_num_Tau, *h_den);
         TEfficiency* effAK8  = new TEfficiency(*h_num_AK8, *h_den);
         TEfficiency* effAK15 = new TEfficiency(*h_num_AK15, *h_den);
 
@@ -60,39 +61,39 @@ void PlotEff_OnlyPT(const char* save_path = "/eos/user/m/mroine/NanoTuples/Htaut
             pT_effAK15 = effAK15;
         }
 
-        effAK4->SetTitle(Form(";%s;Matching Efficiency", xAxisTitle));
-    
-        effAK4->SetMarkerStyle(20);
+        effTau->SetTitle(Form(";%s;Matching Efficiency", xAxisTitle));
+
+        effTau->SetMarkerStyle(20);
         effAK8->SetMarkerStyle(21);
         effAK15->SetMarkerStyle(22);
 
-        effAK4->SetMarkerColor(kBlue);
+        effTau->SetMarkerColor(kBlue);
         effAK8->SetMarkerColor(kRed);
         effAK15->SetMarkerColor(kGreen+2);
 
-        effAK4->SetLineColor(kBlue);
+        effTau->SetLineColor(kBlue);
         effAK8->SetLineColor(kRed);
         effAK15->SetLineColor(kGreen+2);
 
-        effAK4->SetMarkerSize(0.85);
+        effTau->SetMarkerSize(0.85);
         effAK8->SetMarkerSize(0.85);
         effAK15->SetMarkerSize(0.85);
-        
-        effAK4->SetLineWidth(3);
+
+        effTau->SetLineWidth(3);
         effAK8->SetLineWidth(3);
         effAK15->SetLineWidth(3);
 
-        effAK4->Draw("APLE");
-        gPad->Update(); 
-        
-        auto graphAK4 = effAK4->GetPaintedGraph();
-        if (graphAK4) {
-            graphAK4->GetYaxis()->SetRangeUser(0.0, yMax);
-            graphAK4->GetXaxis()->SetRangeUser(vMin, vMax);
-            graphAK4->GetYaxis()->SetTitleSize(0.05);
-            graphAK4->GetXaxis()->SetTitleSize(0.05);
-            graphAK4->GetXaxis()->SetLabelSize(0.045);
-            graphAK4->GetYaxis()->SetLabelSize(0.045);
+        effTau->Draw("APLE");
+        gPad->Update();
+
+        auto graphTau = effTau->GetPaintedGraph();
+        if (graphTau) {
+            graphTau->GetYaxis()->SetRangeUser(0.0, yMax);
+            graphTau->GetXaxis()->SetRangeUser(vMin, vMax);
+            graphTau->GetYaxis()->SetTitleSize(0.05);
+            graphTau->GetXaxis()->SetTitleSize(0.05);
+            graphTau->GetXaxis()->SetLabelSize(0.045);
+            graphTau->GetYaxis()->SetLabelSize(0.045);
         }
 
         effAK8->Draw("PLE SAME");
@@ -112,7 +113,7 @@ void PlotEff_OnlyPT(const char* save_path = "/eos/user/m/mroine/NanoTuples/Htaut
             leg->SetFillStyle(0);
             leg->SetTextSize(0.035);
             leg->SetEntrySeparation(0.2);
-            leg->AddEntry(effAK4, "AK4", "lpe");
+            leg->AddEntry(effTau, "Tau", "lpe");
             leg->AddEntry(effAK8, "AK8", "lpe");
             leg->AddEntry(effAK15, "AK15", "lpe");
             leg->Draw();
@@ -131,35 +132,35 @@ void PlotEff_OnlyPT(const char* save_path = "/eos/user/m/mroine/NanoTuples/Htaut
     gPad->SetBottomMargin(0.15);
     gPad->SetGrid(1, 1);
 
-    TProfile* h_prof_AK4  = new TProfile("prof_ak4",  ";Higgs p_{T} [GeV];p_{T}^{Reco} / p_{T}^{Gen}", 15, 0.0, 1000.0);
+    TProfile* h_prof_Tau  = new TProfile("prof_tau",  ";Higgs p_{T} [GeV];p_{T}^{Reco} / p_{T}^{Gen}", 15, 0.0, 1000.0);
     TProfile* h_prof_AK8  = new TProfile("prof_ak8",  ";Higgs p_{T} [GeV];p_{T}^{Reco} / p_{T}^{Gen}", 15, 0.0, 1000.0);
     TProfile* h_prof_AK15 = new TProfile("prof_ak15", ";Higgs p_{T} [GeV];p_{T}^{Reco} / p_{T}^{Gen}", 15, 0.0, 1000.0);
 
-    ProjectFromTree(fAK4,  h_prof_AK4,  "(tau_pt[0] + tau_pt[1]) / genH_pt : genH_pt", "");
+    ProjectFromTree(fTau,  h_prof_Tau,  "(tau_pt[0] + tau_pt[1]) / genH_pt : genH_pt", "");
     ProjectFromTree(fAK8,  h_prof_AK8,  "fj_pt / genH_pt : genH_pt",                   "");
     ProjectFromTree(fAK15, h_prof_AK15, "ak15_pt / genH_pt : genH_pt",                 "");
 
-    h_prof_AK4->SetLineColor(kBlue);     h_prof_AK4->SetMarkerColor(kBlue);     
-    h_prof_AK8->SetLineColor(kRed);      h_prof_AK8->SetMarkerColor(kRed);      
-    h_prof_AK15->SetLineColor(kGreen+2); h_prof_AK15->SetMarkerColor(kGreen+2); 
+    h_prof_Tau->SetLineColor(kBlue);     h_prof_Tau->SetMarkerColor(kBlue);
+    h_prof_AK8->SetLineColor(kRed);      h_prof_AK8->SetMarkerColor(kRed);
+    h_prof_AK15->SetLineColor(kGreen+2); h_prof_AK15->SetMarkerColor(kGreen+2);
 
-    h_prof_AK4->SetMarkerStyle(20);  h_prof_AK4->SetMarkerSize(0.85);  h_prof_AK4->SetLineWidth(3);
+    h_prof_Tau->SetMarkerStyle(20);  h_prof_Tau->SetMarkerSize(0.85);  h_prof_Tau->SetLineWidth(3);
     h_prof_AK8->SetMarkerStyle(21);  h_prof_AK8->SetMarkerSize(0.85);  h_prof_AK8->SetLineWidth(3);
     h_prof_AK15->SetMarkerStyle(22); h_prof_AK15->SetMarkerSize(0.85); h_prof_AK15->SetLineWidth(3);
 
-    h_prof_AK4->SetMinimum(0.5);
-    h_prof_AK4->SetMaximum(1.1);
+    h_prof_Tau->SetMinimum(0.5);
+    h_prof_Tau->SetMaximum(1.1);
 
-    h_prof_AK4->GetXaxis()->SetNdivisions(505);
-    h_prof_AK4->GetYaxis()->SetTitleSize(0.05);
-    h_prof_AK4->GetXaxis()->SetTitleSize(0.05);
-    h_prof_AK4->GetXaxis()->SetLabelSize(0.045);
-    h_prof_AK4->GetYaxis()->SetLabelSize(0.045);
-    
-    h_prof_AK4->Draw("L");       
+    h_prof_Tau->GetXaxis()->SetNdivisions(505);
+    h_prof_Tau->GetYaxis()->SetTitleSize(0.05);
+    h_prof_Tau->GetXaxis()->SetTitleSize(0.05);
+    h_prof_Tau->GetXaxis()->SetLabelSize(0.045);
+    h_prof_Tau->GetYaxis()->SetLabelSize(0.045);
 
-    h_prof_AK4->Draw("PE SAME"); 
-    h_prof_AK8->Draw("L SAME");  
+    h_prof_Tau->Draw("L");
+
+    h_prof_Tau->Draw("PE SAME");
+    h_prof_AK8->Draw("L SAME");
     h_prof_AK8->Draw("PE SAME"); 
     h_prof_AK15->Draw("L SAME"); 
     h_prof_AK15->Draw("PE SAME");
