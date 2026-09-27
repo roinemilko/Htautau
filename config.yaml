@@ -1,0 +1,64 @@
+# Config settings
+data: "MADGRAPH, POWHEG"
+channel: "both"
+exclude: "AK4"
+bg-channels: "DYto2Tau, TTto2L2Nu, TTto4Q, TTtoLNu2Q"
+max_files: 125
+
+# Directory / DAS path for signals
+signal_dirs:
+  MADGRAPH: "/eos/cms/store/group/phys_higgs/ttHcc/NanoAOD/NanoTuples/2024/mc/VBFHHto2B2Tau_Par-CV-1-C2V-0-C3-1_TuneCP5_13p6TeV_madgraph-pythia8/NanoTuples-uParTv3-parTlepID-NanoAODv15_RunIII2024Summer24MiniAODv6-150X_v2-v2/260608_185815/0000"
+  POWHEG: "/eos/cms/store/group/phys_higgs/ttHcc/NanoAOD/NanoTuples/2024/mc/GluGluH-HTo2Tau_Par-M-125_TuneCP5_13p6TeV_powheg-pythia8/NanoTuples-uParTv3-parTlepID-NanoAODv15_RunIII2024Summer24MiniAODv6-150X_v2-v2/260608_185433/0000"
+signal_das:
+
+# Directory / DAS path for backgrounds
+bg_dirs:
+bg_das:
+  DYto2Tau: "/DYto2Tau-2Jets_Bin-MLL-50_TuneCP5_13p6TeV_amcatnloFXFX-pythia8/CustomNanoAODv15-NanoTuples-uParTv3-parTlepID-NanoAODv15_RunIII2024Summer24MiniAODv6-150X_v2-v7-00000000000000000000000000000000/USER"
+  TTto2L2Nu: "/TTtoLNu2Q_TuneCP5_13p6TeV_powheg-pythia8/CustomNanoAODv15-NanoTuples-uParTv3-parTlepID-NanoAODv15_RunIII2024Summer24MiniAODv6-150X_v2-v2-00000000000000000000000000000000/USER"
+  TTto4Q: "/TTto4Q_TuneCP5_13p6TeV_powheg-pythia8/CustomNanoAODv15-NanoTuples-uParTv3-parTlepID-NanoAODv15_RunIII2024Summer24MiniAODv6-150X_v2-v2-00000000000000000000000000000000/USER"
+  TTtoLNu2Q: "/TTtoLNu2Q_TuneCP5_13p6TeV_powheg-pythia8/CustomNanoAODv15-NanoTuples-uParTv3-parTlepID-NanoAODv15_RunIII2024Summer24MiniAODv6-150X_v2-v2-00000000000000000000000000000000/USER"
+
+# Produce plots of distributions (XX replaces jet type, e.g XX_mass -> fatjet_mass / ak15_mass / tau_mass)
+jet_params: "XX_mass, XX_pt, XX_mass/XX_pt, abs(XX_eta)"
+subjet_params: "XX_Subjet_mass, XX_Subjet_pt, XX_Subjet_mass/XX_Subjet_pt, abs(XX_Subjet_eta)"
+
+# Training config
+sigs: ["Tau", "fatJet", "AK15"]
+training_channel: "mix"
+sig_generator: "MADGRAPH"
+bg: ["TTto4Q", "TTto2L2Nu", "TTtoLNu2Q", "DYto2Tau", "TTto2L2Nu, TTtoLNu2Q", "TTto4Q, TTto2L2Nu, TTtoLNu2Q, DYto2Tau"]
+num_taus: 2
+use_subjets: False
+cms_label: "Private"
+compare_names: "AK4, AK8 ,AK15"
+use_all: False
+use_weights: False
+variables:
+fpr: [1.0, 0.1, 0.001, 0.0001]
+
+# Define sets of variables that can be used for training (empty = all)
+var_sets:
+  greedy:
+    Tau:
+      - tau_rawPNetVSjet
+      - tau_rawUParTVSjet
+      - tau_qConfPNet
+      - tau_pt
+      - tau_probDM11PNet
+    AK8:
+      - fj_globalParT3_Xtauhtauh
+      - fj_globalParT3_TopbWqq
+      - fj_globalParT3_QCD
+      - fj_pt
+      - fj_tau4
+      - fj_globalParT3_XWW3q
+    AK15:
+      - ak15_ParTv3_probXtauhtauh
+      - ak15_ParTv3_probQCD
+      - ak15_ParTv3_probXWW3q
+      - ak15_tau3
+      - ak15_ParTv3_probTopbWqq
+      - ak15_ParTv3_probTopbWq
+      - ak15_ParTv3_probXWW4q
+      - ak15_pt
