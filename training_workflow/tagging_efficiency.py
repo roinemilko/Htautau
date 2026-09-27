@@ -37,11 +37,11 @@ def main():
     bin_widths = [pt_bins[i + 1] - pt_bins[i] for i in range(len(pt_bins) - 1)]
     x_err = [bin_centers[i] - pt_bins[i] for i in range(len(bin_centers))]
     
-    fig_mat, (ax_eff_mat, ax_ratio_mat, ax_yield_mat) = plt.subplots(
-        3, 1, figsize=(8, 10), sharex=True, gridspec_kw={"height_ratios": [3, 1, 1]}, dpi=150,
+    fig_mat, (ax_eff_mat, ax_yield_mat, ax_ratio_mat) = plt.subplots(
+        3, 1, figsize=(8, 12), sharex=True, gridspec_kw={"height_ratios": [4, 1.5, 1.5]}, dpi=150,
     )
-    fig_abs, (ax_eff_abs, ax_yield_abs) = plt.subplots(
-        2, 1, figsize=(8, 8), sharex=True, gridspec_kw={"height_ratios": [3, 1]}, dpi=150,
+    fig_abs, (ax_eff_abs, ax_yield_abs, ax_ratio_abs) = plt.subplots(
+        3, 1, figsize=(8, 12), sharex=True, gridspec_kw={"height_ratios": [4, 1.5, 1.5]}, dpi=150,
     )
 
     colors = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd"]
@@ -59,6 +59,12 @@ def main():
         n_gen_list.append(np.sum(mask_raw))
 
     all_sig_yields_mat = []
+
+    all_effs_mat_list = []
+    all_errs_mat_list = []
+    all_effs_abs_list = []
+    all_errs_abs_list = []
+
     ref_effs_mat = None
     ref_errs_mat = None
 
@@ -120,6 +126,12 @@ def main():
                 sig_errs_abs.append(err_abs)
             
         all_sig_yields_mat.append(n_sig_list_mat)
+
+        all_effs_mat_list.append(np.array(sig_effs_mat))
+        all_errs_mat_list.append(np.array(sig_errs_mat))
+        all_effs_abs_list.append(np.array(sig_effs_abs))
+        all_errs_abs_list.append(np.array(sig_errs_abs))
+
         global_min_eff = 1.0
         cut = threshold
         cut_str = None
@@ -164,22 +176,38 @@ def main():
         if j == 0:
             ref_effs_mat = effs_arr
             ref_errs_mat = errs_arr
-            ax_ratio_mat.axhline(1.0, color='black', linestyle='--')
-        else:
-            with np.errstate(divide='ignore', invalid='ignore'):
-                ratio_mat = effs_arr / ref_effs_mat
-                ratio_err_mat = ratio_mat * np.sqrt(
-                    (errs_arr / effs_arr)**2 + (ref_errs_mat / ref_effs_mat)**2
-                )
-            
-            ax_ratio_mat.errorbar(
-                bin_centers, ratio_mat, xerr=x_err, yerr=ratio_err_mat,
-                fmt=f"{markers[j % len(markers)]}", color=colors[j % len(colors)],
-                capsize=3
-            )
 
         del df_test, all_preds, sig_preds, genH_pt, y_test, w_test
         gc.collect()
+
+    ak8_idx, ak15_idx = -1, -1
+    for idx, (name, mode) in enumerate(zip(args.names, args.modes)):
+        if "AK8" in mode.upper() or "AK8" in name.upper():
+            ak8_idx = idx
+        elif "AK15" in mode.upper() or "AK15" in name.upper():
+            ak15_idx = idx
+
+    def plot_ratio(ax_ratio, effs_list, errs_list):
+        if ak8_idx != -1 and ak15_idx != -1:
+            eff_ak8, err_ak8 = effs_list[ak8_idx], errs_list[ak8_idx]
+            eff_ak15, err_ak15 = effs_list[ak15_idx], errs_list[ak15_idx]
+            
+            with np.errstate(divide='ignore', invalid='ignore'):
+                ratio = eff_ak15 / eff_ak8
+                ratio_err = ratio * np.sqrt((err_ak15/eff_ak15)**2 + (err_ak8/eff_ak8)**2)
+                
+            ax_ratio.errorbar(bin_centers, ratio, xerr=x_err, yerr=ratio_err, fmt='ko', capsize=3)
+            ax_ratio.axhline(1.0, color='gray', linestyle='--')
+            ax_ratio.set_ylabel("AK15 / AK8")
+            ax_ratio.set_ylim(0.5, 1.5)
+            ax_ratio.grid(axis="y", linestyle=":", alpha=0.7)
+            ax_ratio.grid(axis="x", linestyle=":", alpha=0.7)
+            ax_ratio.set_xlabel(r"Higgs $p_T$ [GeV]")
+        else:
+            ax_ratio.set_visible(False)
+
+    plot_ratio(ax_ratio_mat, all_effs_mat_list, all_errs_mat_list)
+    plot_ratio(ax_ratio_abs, all_effs_abs_list, all_errs_abs_list)
 
     ax_yield_abs.bar(bin_centers, n_gen_list, width=bin_widths, alpha=0.2, color="black", label="Total events")
     for j in range(num_models):
@@ -199,9 +227,21 @@ def main():
     br = 1.0 / args.fpr
     br_str = f"{br:.0e}"
 
+    legend_loc = ""
+
+    if global_min_eff > 0.8:
+        legend_loc = "lower right"
+        ax_inset.set_ylim(0.70, 1.05)
+        ax_inset.set_xlim(200, 500.0) 
+        ax_inset.grid(axis="both", linestyle=":", alpha=0.5)
+        ax_inset.tick_params(axis='both', labelsize=10)
+    else:
+        ax_inset.remove()
+        legend_loc = "best"
+
     ax_eff_mat.set_ylabel(f"Tagging Eff.")
     ax_eff_mat.legend(
-        loc="center right", 
+        loc=legend_loc,
         title=f"Background Rejection {br_str}", 
         title_fontsize=14, 
         fontsize=12
@@ -213,24 +253,15 @@ def main():
     hep.cms.label(args.cms_label, data=False, rlabel="13.6 TeV", ax=ax_eff_mat, loc=0, fontsize=14)
     ax_eff_mat.set_title(rf"$H \to \tau\tau$ + {get_mode_names(args.bg_mode)}", loc="center", fontsize=14)
 
-    if global_min_eff > 0.8:
-        ax_inset.set_ylim(0.8, 1.01)
-        ax_inset.set_xlim(200, 600.0) 
-        ax_inset.grid(axis="both", linestyle=":", alpha=0.5)
-        ax_inset.tick_params(axis='both', labelsize=10)
-    else:
-        ax_inset.remove()
 
-
-    ax_ratio_mat.set_ylabel(f"/{args.names[0]}")
-    ax_ratio_mat.grid(axis="y", which="major", linestyle="-", alpha=0.7)
-    ax_ratio_mat.grid(axis="x", linestyle=":", alpha=0.7)
 
     ax_yield_mat.set_yscale("log")
-    ax_yield_mat.set_xlabel(r"Higgs $p_T$ [GeV]")
     ax_yield_mat.set_ylabel("Events")
     ax_yield_mat.grid(axis="y", linestyle=":", alpha=0.7)
-    ax_yield_mat.legend(loc="upper right", fontsize=8, ncol=2)
+    ax_yield_mat.legend(loc="best", fontsize=8, ncol=2)
+    if ak8_idx == -1 or ak15_idx == -1:
+        ax_yield_mat.set_xlabel(r"Higgs $p_T$ [GeV]")
+
     fig_mat.tight_layout()
     out_name_mat = args.out_plot.replace(".png", f"_matched.png")
     fig_mat.savefig(out_name_mat, bbox_inches="tight")

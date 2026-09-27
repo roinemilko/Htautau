@@ -37,7 +37,7 @@ def main():
     for i in range(num_models):
         df_all = pd.read_parquet(args.parquets[i])
         
-        print(f"First 5 rows of Parquet '{args.names[i]}'")
+        print(f"First 5 row s of Parquet '{args.names[i]}'")
         print(df_all.head())
         
         if not args.use_all:
@@ -96,9 +96,12 @@ def main():
         n_sig_gen_list.append(np.sum(mask))
         w_sig_gen_list.append(np.sum(raw_sig_weights[mask]))
 
-    fig_eff, (ax_eff, ax_yield_eff) = plt.subplots(
-        2, 1, figsize=(8, 8), sharex=True, gridspec_kw={"height_ratios": [3, 1]}, dpi=150
+    fig_eff, (ax_eff, ax_yield_eff, ax_ratio_eff) = plt.subplots(
+        3, 1, figsize=(8, 12), sharex=True, gridspec_kw={"height_ratios": [4, 1.5, 1.5]}, dpi=150
     )
+
+    all_effs = []
+    all_errs = []
 
     colors = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd"]
     markers = ["o", "s", "^", "D", "v"]
@@ -150,6 +153,9 @@ def main():
                 sig_effs.append(eff)
                 sig_errs.append(err)
 
+        all_effs.append(np.array(sig_effs))
+        all_errs.append(np.array(sig_errs))
+
         cut = threshold
         if cut > 0.999:
             cut_inv = 1 - threshold
@@ -168,6 +174,31 @@ def main():
             
     ax_yield_eff.bar(bin_centers, n_sig_gen_list, width=bin_widths, alpha=0.2, color="black", label="Total Generated")
     
+    ak8_idx, ak15_idx = -1, -1
+    for idx, (name, mode) in enumerate(zip(args.names, args.modes)):
+        if "AK8" in mode.upper() or "AK8" in name.upper():
+            ak8_idx = idx
+        elif "AK15" in mode.upper() or "AK15" in name.upper():
+            ak15_idx = idx
+
+    if ak8_idx != -1 and ak15_idx != -1:
+        eff_ak8, err_ak8 = all_effs[ak8_idx], all_errs[ak8_idx]
+        eff_ak15, err_ak15 = all_effs[ak15_idx], all_errs[ak15_idx]
+        
+        with np.errstate(divide='ignore', invalid='ignore'):
+            ratio = eff_ak15 / eff_ak8
+            ratio_err = ratio * np.sqrt((err_ak15/eff_ak15)**2 + (err_ak8/eff_ak8)**2)
+            
+        ax_ratio_eff.errorbar(bin_centers, ratio, xerr=x_err, yerr=ratio_err, fmt='ko', capsize=3)
+        ax_ratio_eff.axhline(1.0, color='gray', linestyle='--')
+        ax_ratio_eff.set_ylabel("AK15 / AK8")
+        ax_ratio_eff.set_ylim(0.5, 1.5)
+        ax_ratio_eff.grid(axis="y", linestyle=":", alpha=0.7)
+        ax_ratio_eff.grid(axis="x", linestyle=":", alpha=0.7)
+        ax_ratio_eff.set_xlabel(r"Higgs $p_T$ [GeV]")
+    else:
+        ax_ratio_eff.set_visible(False)
+
     br = 1.0 / args.fpr
     br_str = f"{br:.0e}"
 
@@ -184,7 +215,9 @@ def main():
         fontsize=14
     )
 
-    ax_yield_eff.set_xlabel(r"Higgs $p_T$ [GeV]")
+    if ak8_idx == -1 or ak15_idx == -1:
+        ax_yield_eff.set_xlabel(r"Higgs $p_T$ [GeV]")
+
     ax_yield_eff.set_ylabel("Events")
     ax_yield_eff.grid(axis="y", linestyle=":", alpha=0.7)
     ax_yield_eff.legend(loc="upper right", fontsize=10)

@@ -161,6 +161,8 @@ def main():
     ax.plot([0, 1], [0, 1], linestyle='--')
     ax.set_xlabel('Background efficiency')
     ax.set_ylabel('Signal efficiency')
+    ax.set_yscale("log")
+    ax.set_xscale("log")
     ax.legend()
     hep.cms.label(args.cms_label, data=False, rlabel=r"$H \to \tau\tau$ (125 GeV)", ax=ax, loc=3, fontsize=14)
     fig.tight_layout()
@@ -298,7 +300,6 @@ def main():
     ax_yield.bar(bin_centers, n_sig_list, width=bin_widths, alpha=0.5, label="Signal", color="blue")
     ax_yield.bar(bin_centers, n_bg_list, width=bin_widths, alpha=0.5, label="Background", color="red")
 
-    ax_yield.set_yscale("log")
     ax_yield.set_xlabel(f"Reconstructed Object $p_T$ [GeV]")
     ax_yield.set_ylabel("Events")
     ax_yield.grid(axis='y', linestyle=':', alpha=0.7)

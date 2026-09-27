@@ -1,16 +1,12 @@
+import os
 import glob
+import subprocess
 
-DATA_DIRS = {
-    "MADGRAPH": "/eos/cms/store/group/phys_higgs/ttHcc/NanoAOD/NanoTuples/2024/mc/VBFHHto2B2Tau_Par-CV-1-C2V-0-C3-1_TuneCP5_13p6TeV_madgraph-pythia8/NanoTuples-uParTv3-parTlepID-NanoAODv15_RunIII2024Summer24MiniAODv6-150X_v2-v2/260608_185815/0000",
-    "POWHEG":   "/eos/cms/store/group/phys_higgs/ttHcc/NanoAOD/NanoTuples/2024/mc/GluGluH-HTo2Tau_Par-M-125_TuneCP5_13p6TeV_powheg-pythia8/NanoTuples-uParTv3-parTlepID-NanoAODv15_RunIII2024Summer24MiniAODv6-150X_v2-v2/260608_185433/0000"
-}
-
-BG_DATA_DIRS = {
-    "DYto2Tau": "/eos/user/m/mroine/NanoTuples/Htautau/data_workflow/bg_data/DYto2Tau",
-    "TTto2L2Nu": "/eos/user/m/mroine/NanoTuples/Htautau/data_workflow/bg_data/TTto2L2Nu",
-    "TTto4Q": "/eos/user/m/mroine/NanoTuples/Htautau/data_workflow/bg_data/TTto4Q",
-    "TTtoLNu2Q": "/eos/user/m/mroine/NanoTuples/Htautau/data_workflow/bg_data/TTtoLNu2Q"
-}
+DATA_DIRS = config.get("signal_dirs") or {}
+DAS_DATASETS = config.get("signal_das") or {}
+BG_DATA_DIRS = config.get("bg_dirs") or {}
+DAS_BG_DATASETS = config.get("bg_das") or {}
+MAX_FILES = config.get("max_files", 0)
 
 _use_data_str = config.get("data", "MADGRAPH, POWHEG") 
 _channel_mode = config.get("channel", "both")
@@ -20,14 +16,11 @@ _bg_channel_str = config.get("bg-channels", "DYto2Tau, TTto2L2Nu, TTto4Q, TTtoLN
 DATA = [x.strip() for x in _use_data_str.split(",")]
 EXCLUDED_JETS = [x.strip() for x in _excluded_str.split(",")] if _excluded_str else []
 
-
-
 SUFFIXES = []
 if _channel_mode in ["both", "inclusive_only"]:
     SUFFIXES.append("") 
 if _channel_mode in ["both", "hadhad_only"]:
     SUFFIXES.append("_hadhad") 
-
 
 JET_NAMES = {
     "AK4": "Jet",
@@ -63,18 +56,17 @@ EXPECTED_BG_SKIMS = [
     for j in REQUESTED_JETS if j in BG_NAMES
 ]
 
-def get_bg_suffix(dataset, bg_channel):
-    return f"_{bg_channel}" if (dataset in BG_DATA_DIRS and bg_channel != "") else ""
-
 valid_bg_suffixes = [f"_{bg}" for bg in VALID_BGS]
 bgsuffix_constraint = "|".join(valid_bg_suffixes) + "|" if valid_bg_suffixes else ".*"
 
+ALL_DATA_KEYS = list(DATA_DIRS.keys()) + list(DAS_DATASETS.keys())
+ALL_BG_KEYS = list(BG_DATA_DIRS.keys()) + list(DAS_BG_DATASETS.keys())
+
 wildcard_constraints:
-    dataset  = "|".join(DATA_DIRS.keys()),
-    bg       = "|".join(BG_DATA_DIRS.keys()) if BG_DATA_DIRS else ".*",
+    dataset  = "|".join(ALL_DATA_KEYS) if ALL_DATA_KEYS else ".*",
+    bg       = "|".join(ALL_BG_KEYS) if ALL_BG_KEYS else ".*",
     suffix   = "_hadhad|",
     bgsuffix = bgsuffix_constraint
-
 
 rule all:
     input:
@@ -89,46 +81,80 @@ rule skim_bg:
     input:
         EXPECTED_BG_SKIMS
 
+rule create_file_lists:
+    output:
+        "file_lists/{dataset_or_bg}.txt"
+    run:
+        target = wildcards.dataset_or_bg
+        is_bg = target in BG_DATA_DIRS or target in DAS_BG_DATASETS
+        files = []
+        
+        if target in DAS_DATASETS or target in DAS_BG_DATASETS:
+            das_path = DAS_DATASETS.get(target) or DAS_BG_DATASETS.get(target)
+            
+            query = f"file dataset={das_path}"
+            if "USER" in das_path and "instance=" not in das_path:
+                query += " instance=prod/phys03"
+                
+            limit_flag = f"-limit={MAX_FILES}" if MAX_FILES > 0 else ""
+            cmd = f"dasgoclient -query=\"{query}\" {limit_flag}"
+            
+            print(f"Querying DAS: {cmd}")
+            
+            clean_env = os.environ.copy()
+            clean_env.pop("PYTHONHOME", None)
+            clean_env.pop("PYTHONPATH", None)
+            
+            res = subprocess.check_output(cmd, shell=True, text=True, env=clean_env)
+            files = [f"root://cms-xrd-global.cern.ch/{f}" for f in res.splitlines() if f.endswith('.root')]
+        
+        else:
+            local_path = BG_DATA_DIRS.get(target) if is_bg else DATA_DIRS.get(target)
+            if local_path:
+                files = glob.glob(f"{local_path}/*.root")
+                if MAX_FILES > 0:
+                    files = files[:MAX_FILES]
+                
+        os.makedirs("file_lists", exist_ok=True)
+        with open(output[0], "w") as f:
+            f.write("\n".join(files))
+
 rule skim_run:
     input:
-        in_files = lambda w: glob.glob(f"{DATA_DIRS[w.dataset]}/*.root"),
+        file_list = "file_lists/{dataset}.txt",
         so = "skimmer/BuildData_C.so"
     output:
         raw = "jets/{dataset}/RawEventInfo{suffix}.root",
         jets = [f"jets/{{dataset}}/{JET_NAMES[j]}{{suffix}}.root" for j in REQUESTED_JETS]
     threads: 6
     params:
-        pattern = lambda w: f"{DATA_DIRS[w.dataset]}/*.root",
         hadhad  = lambda w: "true" if w.suffix == "_hadhad" else "false",
         out_path= "jets/{dataset}",
-        
         inc_ak4  = "true" if "AK4" in REQUESTED_JETS else "false",
         inc_ak8  = "true" if "AK8" in REQUESTED_JETS else "false",
         inc_ak15 = "true" if "AK15" in REQUESTED_JETS else "false",
         inc_tau  = "true" if "Tau" in REQUESTED_JETS else "false"
     shell:
         """
-        root -l -b -q -e 'gSystem->Load("{input.so}"); BuildData("{params.pattern}", {params.inc_ak4}, {params.inc_ak8}, {params.inc_ak15}, true, {params.inc_tau}, {params.hadhad}, "{params.out_path}", {threads});'
+        root -l -b -q -e 'gSystem->Load("{input.so}"); BuildData("{input.file_list}", {params.inc_ak4}, {params.inc_ak8}, {params.inc_ak15}, true, {params.inc_tau}, {params.hadhad}, "{params.out_path}", {threads});'
         """
 
 rule skim_bg_run:
     input:
-        in_files = lambda w: glob.glob(f"{BG_DATA_DIRS[w.bg]}/*.root"),
+        file_list = "file_lists/{bg}.txt",
         so = "skimmer/BuildBg_C.so"
     output:
         jets = [f"background/{{bg}}/{BG_NAMES[j]}_{{bg}}.root" for j in REQUESTED_JETS if j in BG_NAMES]
     threads: 6
     params:
-        pattern = lambda w: f"{BG_DATA_DIRS[w.bg]}/*.root",
         out_path= "background/{bg}",
         identifyer = lambda w: f"_{w.bg}",
-
         inc_ak8  = "true" if "AK8" in REQUESTED_JETS else "false",
         inc_ak15 = "true" if "AK15" in REQUESTED_JETS else "false",
         inc_tau  = "true" if "Tau" in REQUESTED_JETS else "false"
     shell:
         """
-        root -l -b -q -e 'gSystem->Load("{input.so}"); BuildBg("{params.pattern}", "{params.out_path}", "{params.identifyer}", {params.inc_tau}, {params.inc_ak8}, {params.inc_ak15}, {threads});'
+        root -l -b -q -e 'gSystem->Load("{input.so}"); BuildBg("{input.file_list}", "{params.out_path}", "{params.identifyer}", {params.inc_tau}, {params.inc_ak8}, {params.inc_ak15}, {threads});'
         """
 
 rule compile:

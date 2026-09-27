@@ -211,7 +211,7 @@ def main():
     ax_yield.set_xlabel("Average Reconstructed Object $p_T$ [GeV]")
     ax_yield.set_ylabel("Total Events")
     ax_yield.grid(axis="y", linestyle=":", alpha=0.7)
-    ax_yield.legend(loc="upper right", fontsize=10)
+    ax_yield.legend(loc="best", fontsize=10)
     fig.tight_layout()
     fig.savefig(args.out_plot, bbox_inches="tight")
     plt.close()
@@ -262,9 +262,10 @@ def main():
                 sig_effs[j].append(eff)
                 sig_errs[j].append(err)
 
-    fig_eff, (ax_eff, ax_eff_rat, ax_yield_eff) = plt.subplots(
-        3, 1, figsize=(8, 8), sharex=True,
-        gridspec_kw={"height_ratios": [3, 1, 1]}, dpi=150,
+
+    fig_eff, (ax_eff, ax_yield_eff, ax_ratio_eff) = plt.subplots(
+        3, 1, figsize=(8, 12), sharex=True,
+        gridspec_kw={"height_ratios": [4, 1.5, 1.5]}, dpi=150,
     )
 
     ax_inset = ax_eff.inset_axes([0.10, 0.10, 0.42, 0.50])
@@ -312,32 +313,51 @@ def main():
         if valid_effs:
             global_min_eff = min(global_min_eff, min(valid_effs))
 
-        if j != 0:
-            eff_j = np.array(sig_effs[j])
-            eff_0 = np.array(sig_effs[0])
-            err_j = np.array(sig_errs[j])
-            err_0 = np.array(sig_errs[0])
+    ak8_idx, ak15_idx = -1, -1
+    for idx, (name, mode) in enumerate(zip(args.names, args.modes)):
+        if "AK8" in mode.upper() or "AK8" in name.upper():
+            ak8_idx = idx
+        elif "AK15" in mode.upper() or "AK15" in name.upper():
+            ak15_idx = idx
 
-            with np.errstate(divide='ignore', invalid='ignore'):
-                y_ratio = eff_j / eff_0
-                y_err_ratio = y_ratio * np.sqrt((err_j / eff_j)**2 + (err_0 / eff_0)**2)
-
-            ax_eff_rat.errorbar(
-                    bin_centers,
-                    y_ratio,
-                    xerr=x_err,
-                    yerr=y_err_ratio,
-                    fmt=f"{markers[j % len(markers)]}-",
-                    color=colors[j % len(colors)],
-                    capsize=3,
-                )
+    if ak8_idx != -1 and ak15_idx != -1:
+        eff_ak8 = np.array(sig_effs[ak8_idx])
+        err_ak8 = np.array(sig_errs[ak8_idx])
+        eff_ak15 = np.array(sig_effs[ak15_idx])
+        err_ak15 = np.array(sig_errs[ak15_idx])
+        
+        with np.errstate(divide='ignore', invalid='ignore'):
+            ratio = eff_ak15 / eff_ak8
+            ratio_err = ratio * np.sqrt((err_ak15/eff_ak15)**2 + (err_ak8/eff_ak8)**2)
+            
+        ax_ratio_eff.errorbar(bin_centers, ratio, xerr=x_err, yerr=ratio_err, fmt='ko', capsize=3)
+        ax_ratio_eff.axhline(1.0, color='gray', linestyle='--')
+        ax_ratio_eff.set_ylabel("AK15 / AK8")
+        ax_ratio_eff.set_ylim(0.5, 1.5)
+        ax_ratio_eff.grid(axis="y", linestyle=":", alpha=0.7)
+        ax_ratio_eff.grid(axis="x", linestyle=":", alpha=0.7)
+        ax_ratio_eff.set_xlabel(r"Higgs $p_T$ [GeV]")
+    else:
+        ax_ratio_eff.set_visible(False)
         
     br = 1.0 / args.fpr
     br_str = f"{br:.0e}"
         
     ax_eff.set_ylabel(f"Signal eff.")
+    legend_loc = ""
+    
+    if global_min_eff > 0.75:
+        legend_loc = "lower right"
+        ax_inset.set_ylim(0.70, 1.05)
+        ax_inset.set_xlim(200, 500.0) 
+        ax_inset.grid(axis="both", linestyle=":", alpha=0.5)
+        ax_inset.tick_params(axis='both', labelsize=10)
+    else:
+        ax_inset.remove()
+        legend_loc = "best"
+
     ax_eff.legend(
-        loc="center right", 
+        loc=legend_loc, 
         title=f"Background Rejection {br_str}", 
         title_fontsize=14, 
         fontsize=12
@@ -352,27 +372,17 @@ def main():
         ax=ax_eff, loc=0, fontsize=14,
     )
 
-    if global_min_eff > 0.75:
-        ax_inset.set_ylim(0.70, 1.05)
-        ax_inset.set_xlim(200, 500.0) 
-        ax_inset.grid(axis="both", linestyle=":", alpha=0.5)
-        ax_inset.tick_params(axis='both', labelsize=10)
-    else:
-        ax_inset.remove()
 
-    
-    ax_eff_rat.axhline(1.0, color="black", linestyle="--", alpha=0.5)
-    
-    ax_eff_rat.set_ylabel(f"/{args.names[0]}") 
-    ax_eff_rat.grid(axis="y", linestyle=":", alpha=0.7)
-    ax_eff_rat.grid(axis="x", linestyle=":", alpha=0.7)
 
     ax_yield_eff.bar(bin_centers, n_sig_list_eff, width=bin_widths, alpha=0.5, label="Signal intersection", color="blue")
     ax_yield_eff.set_yscale("log")
-    ax_yield_eff.set_xlabel("Higgs $p_T$ [GeV]")
+
+    if ak8_idx == -1 or ak15_idx == -1:
+        ax_yield_eff.set_xlabel(r"Higgs $p_T$ [GeV]")
+
     ax_yield_eff.set_ylabel("Events")
     ax_yield_eff.grid(axis="y", linestyle=":", alpha=0.7)
-    ax_yield_eff.legend(loc="upper right", fontsize=10)
+    ax_yield_eff.legend(loc="best", fontsize=10)
     fig_eff.tight_layout()
     fig_eff.savefig(args.out_eff_plot, bbox_inches="tight")
     

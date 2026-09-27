@@ -1,6 +1,6 @@
 ## Training BDT
 ### Goal
-The idea of this code is to provide a workflow for training signal-vs-background tagging for identifying Tau objects and $H\to \tau\tau$ events against $tt$ -background. The Boosted Desicion tree itself is very simple and uses ParticleNet, ParT and DeepTau taggers as inputs. The main purpose is to evaluate the tagging performance of AK4/AK8/AK15 jets and subjets independently of taggers and variable distributions.
+The idea of this code is to provide a workflow for training signal-vs-background tagging for identifying Tau objects and $H\to \tau\tau$ events against $tt$ -background or DY production. These are the biggest expected background and the most difficult background in boosted $H\to\tau\tau$ -analyses. The Boosted Desicion tree itself is very simple and uses ParticleNet, ParT and DeepTau taggers as inputs. The main purpose is to evaluate the tagging performance of AK4/AK8/AK15 jets and subjets independently of taggers and variable distributions.
 ### Usage
 The workflow consists of the following steps:
 ```mermaid
@@ -12,11 +12,20 @@ B-->C
 C-->D[Model training]
 D-->F[Model inference]
 ```
-which are modular and can be run independently. Like everything else this runs in [LCG 109](https://lcginfo.cern.ch/release/109/). However here paralellization is handeled by XGBoost and snakemake assumes one core (warning: running the pipeline in parallel will result in write/read race conditinons). Run the whole pipeline with
+which are modular and can be run independently. Like everything else this runs in [LCG 109](https://lcginfo.cern.ch/release/109/). The following inference is provided:
+| Inference | Rule |
+|----------|:-------------:|
+| ROC -curves, confusion matrices at 0.5 and feature gains | bdt_inference (note: this also trains the models and computes the inference)|
+|$\epsilon_{\text{sig.}}=\frac{\text{tagged jets}\cap \text{matched AK4}\cap \text{matched AK8} \cap \text{matched AK15}}{\text{matched AK4}\cap \text{matched AK8}\cap\text{matched AK15}}$  vs. Higgs $p_T$| compare_bdts
+|$\epsilon_{\text{tag.}}=\frac{\text{tagged jets}}{\text{matched jets}}$ vs Higgs $p_t$|compare_tagging_effs|
+Total eff. of reco. process by
+- Start with full set of generated events
+- If signal event is unmatched, manually set tagger score to 0
+- Signal efficiency
 ```bash
 ./run.sh --config #optional flags
 ```
-with optional flags listed here:
+with optional flags listed here:compare_tagging_effs
 | Flag (set to preset value) | Usage |
 |----------|:-------------:|
 | sig="TauHadHad" | Specify which signal to use. Add own datasets to SIGNAL_DATA_DIRS in the snakefile. | 

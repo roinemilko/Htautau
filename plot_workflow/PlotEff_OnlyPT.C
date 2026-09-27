@@ -10,6 +10,7 @@
 #include <TLatex.h>
 #include "eff_helpers.h"
 #include "TProfile.h"
+#include "TLine.h"
 
 void PlotEff_OnlyPT(const char* save_path = "/eos/user/m/mroine/NanoTuples/Htautau/plot_workflow/plots/POWHEG",
     const char* fRaw  = "/eos/user/m/mroine/NanoTuples/Htautau/data_workflow/jets/POWHEG/RawEventInfo_hadhad.root",
@@ -20,6 +21,10 @@ void PlotEff_OnlyPT(const char* save_path = "/eos/user/m/mroine/NanoTuples/Htaut
 
     TH1::AddDirectory(kFALSE); 
     gStyle->SetOptStat(0);
+
+    TEfficiency* pT_effAK8 = nullptr;
+    TEfficiency* pT_effAK15 = nullptr;
+
 
     TCanvas* c1 = new TCanvas("c1", "", 2000, 800);
     c1->Divide(3, 1);
@@ -50,6 +55,11 @@ void PlotEff_OnlyPT(const char* save_path = "/eos/user/m/mroine/NanoTuples/Htaut
         TEfficiency* effAK8  = new TEfficiency(*h_num_AK8, *h_den);
         TEfficiency* effAK15 = new TEfficiency(*h_num_AK15, *h_den);
 
+        if (padNum == 1) {
+            pT_effAK8 = effAK8;
+            pT_effAK15 = effAK15;
+        }
+
         effAK4->SetTitle(Form(";%s;Matching Efficiency", xAxisTitle));
     
         effAK4->SetMarkerStyle(20);
@@ -71,7 +81,6 @@ void PlotEff_OnlyPT(const char* save_path = "/eos/user/m/mroine/NanoTuples/Htaut
         effAK4->SetLineWidth(3);
         effAK8->SetLineWidth(3);
         effAK15->SetLineWidth(3);
-
 
         effAK4->Draw("APLE");
         gPad->Update(); 
@@ -155,6 +164,11 @@ void PlotEff_OnlyPT(const char* save_path = "/eos/user/m/mroine/NanoTuples/Htaut
     h_prof_AK15->Draw("L SAME"); 
     h_prof_AK15->Draw("PE SAME");
 
+    TLine* ref_line = new TLine(0.0, 0.55, 1000.0, 0.55);
+    ref_line->SetLineWidth(4);
+    ref_line->SetLineColor(kGray+2);
+    ref_line->Draw("SAME");
+
     TLatex pad2_latex;
     pad2_latex.SetNDC();
     pad2_latex.SetTextAlign(31); 
@@ -162,7 +176,6 @@ void PlotEff_OnlyPT(const char* save_path = "/eos/user/m/mroine/NanoTuples/Htaut
     pad2_latex.SetTextSize(0.045);
     pad2_latex.DrawLatex(0.90, 0.81, "13.6 TeV"); 
     gPad->Update();
-
 
     std::cout << "Asym plot..." << std::endl;
     drawEffPlot(3, "genTau_pt_asym_raw", "genTau_pt_asym", "genH_pt_raw > 300", "genH_pt > 300", 25, 0.0, 1.0, "genTau_pt_asym (genH_pt > 300 GeV)", 1.0);
@@ -177,12 +190,89 @@ void PlotEff_OnlyPT(const char* save_path = "/eos/user/m/mroine/NanoTuples/Htaut
 
     latex.SetTextFont(52);
     latex.SetTextSize(0.035);
-    latex.DrawLatex(0.07, 0.88, "Simulation, Work in Progress");
+    latex.DrawLatex(0.07, 0.88, "Simulation Private");
 
     latex.SetTextFont(42);
     latex.SetTextSize(0.04);
     latex.DrawLatex(0.07, 0.83, "H #rightarrow #tau#tau (125 GeV)");
 
-    c1->SaveAs(TString(save_path) + "/JetFatJetAK15_recoeff_hadhad.png"); 
-    std::cout << "Done! Saved to " << save_path << "/JetFatJetAK15_recoeff_hadhad.png" << std::endl;
+    c1->SaveAs(Form("%s.png", save_path)); 
+    std::cout << "Done! Main plot saved to " << save_path << std::endl;
+
+
+    if(pT_effAK8 && pT_effAK15) {
+        std::cout << "Efficiency Ratio Plot..." << std::endl;
+        TCanvas* c2 = new TCanvas("c2", "Efficiency Ratio", 800, 800);
+        c2->cd();
+        gPad->SetTopMargin(0.10);
+        gPad->SetLeftMargin(0.15);
+        gPad->SetRightMargin(0.05);
+        gPad->SetBottomMargin(0.15);
+        gPad->SetGrid(1, 1);
+
+        int nBins = pT_effAK8->GetTotalHistogram()->GetNbinsX();
+        TGraphAsymmErrors* gr_ratio = new TGraphAsymmErrors(nBins);
+        
+        for(int i = 1; i <= nBins; ++i) {
+            double e8 = pT_effAK8->GetEfficiency(i);
+            double e15 = pT_effAK15->GetEfficiency(i);
+            double pt = pT_effAK8->GetTotalHistogram()->GetBinCenter(i);
+            double ptErr = pT_effAK8->GetTotalHistogram()->GetBinWidth(i) / 2.0;
+
+            if (e8 > 0) {
+                double r = e15 / e8;
+                
+                double err8 = (pT_effAK8->GetEfficiencyErrorUp(i) + pT_effAK8->GetEfficiencyErrorLow(i)) / 2.0;
+                double err15 = (pT_effAK15->GetEfficiencyErrorUp(i) + pT_effAK15->GetEfficiencyErrorLow(i)) / 2.0;
+                
+                double relErr = sqrt(pow(err8 / e8, 2) + pow(err15 / e15, 2));
+                double absErr = r * relErr;
+                
+                gr_ratio->SetPoint(i-1, pt, r);
+                gr_ratio->SetPointError(i-1, ptErr, ptErr, absErr, absErr);
+            } else {
+                gr_ratio->SetPoint(i-1, pt, 0);
+                gr_ratio->SetPointError(i-1, ptErr, ptErr, 0, 0);
+            }
+        }
+
+        gr_ratio->SetTitle(";Higgs p_{T} [GeV];#varepsilon_{AK15} / #varepsilon_{AK8}");
+        gr_ratio->SetMarkerStyle(20);
+        gr_ratio->SetMarkerColor(kBlack);
+        gr_ratio->SetLineColor(kBlack);
+        gr_ratio->SetLineWidth(3);
+        gr_ratio->SetMarkerSize(1.2);
+        
+        gr_ratio->Draw("APLE");
+        
+        gr_ratio->GetYaxis()->SetRangeUser(0.95, 3.5); 
+        gr_ratio->GetXaxis()->SetRangeUser(300, 1000);
+        gr_ratio->GetYaxis()->SetTitleSize(0.05);
+        gr_ratio->GetYaxis()->SetTitleOffset(1.2);
+        gr_ratio->GetXaxis()->SetTitleSize(0.05);
+        gr_ratio->GetXaxis()->SetLabelSize(0.045);
+        gr_ratio->GetYaxis()->SetLabelSize(0.045);
+
+        TLatex c2_latex;
+        c2_latex.SetNDC();
+        
+        c2_latex.SetTextFont(62);
+        c2_latex.SetTextSize(0.05);
+        c2_latex.DrawLatex(0.15, 0.92, "CMS");
+
+        c2_latex.SetTextFont(52);
+        c2_latex.SetTextSize(0.04);
+        c2_latex.DrawLatex(0.26, 0.92, "Simulation Private");
+
+        c2_latex.SetTextFont(42);
+        c2_latex.SetTextSize(0.04);
+        c2_latex.DrawLatex(0.18, 0.83, "H #rightarrow #tau#tau (125 GeV)");
+        
+        c2_latex.SetTextAlign(31); 
+        c2_latex.DrawLatex(0.95, 0.92, "13.6 TeV");
+        
+        TString ratio_save_path = Form("%s_ratio.png", save_path);
+        c2->SaveAs(ratio_save_path);
+        std::cout << "Done! Ratio plot saved to " << ratio_save_path << std::endl;
+    }
 }
