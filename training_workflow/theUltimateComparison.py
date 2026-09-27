@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from sklearn.metrics import roc_curve, auc
 import sys
 import uproot
-from plot_helpers import *
+from Helpers import *
 import gc
 
 def main():

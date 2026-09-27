@@ -1,6 +1,5 @@
 import uproot
 import dask
-dask.config.set({'dataframe.query-planning': False})
 import dask_awkward as dak
 import dask.dataframe as dd
 import os

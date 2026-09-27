@@ -81,9 +81,9 @@ def main():
         bg_vars=args.variables
     )
 
-    if not df_sig.empty:
+    if len(df_sig.index) != 0:
         plot_corr_heatmap(df_sig, "", args.out_sig, args.cms_label)
-    if not df_bg.empty:
+    if len(df_bg.index) != 0:
         plot_corr_heatmap(df_bg, "", args.out_bg, args.cms_label)
 
 

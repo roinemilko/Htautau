@@ -50,7 +50,7 @@ def main():
 
     # Save to Parquet
     print(f"Saving {len(df)} events to {args.out}...")
-    df.to_parquet(args.out, index=False)
+    df.to_parquet(args.out, write_index=False)
     print("Done!")
 
 if __name__ == "__main__":

@@ -7,7 +7,7 @@ import matplotlib.animation as animation
 import sys
 import uproot
 import gc
-from plot_helpers import *
+from Helpers import *
 from tqdm import tqdm
 
 def main():

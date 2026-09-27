@@ -1,3 +1,5 @@
 source /cvmfs/sft.cern.ch/lcg/views/LCG_109/x86_64-el9-gcc15-opt/setup.sh
-exec snakemake --configfile /eos/user/m/mroine/NanoTuples/Htautau/config.yaml --latency-wait 120 "$@"
+
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
+exec snakemake --configfile "$REPO_ROOT/config.yaml" --latency-wait 120 "$@"
     

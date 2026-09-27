@@ -1,8 +1,23 @@
 import os
 import hashlib
 
-BG_BASE_DIR = "/eos/user/m/mroine/NanoTuples/Htautau/data_workflow/background"
-VALID_BGS = config.get("bg-channels")
+from snakemake.exceptions import WorkflowError
+
+REPO_ROOT = os.path.dirname(os.path.realpath(workflow.basedir))
+DATA_WORKFLOW_DIR = os.path.join(REPO_ROOT, "data_workflow")
+
+BG_BASE_DIR = f"{DATA_WORKFLOW_DIR}/background"
+
+_valid_bgs_raw = config.get("bg-channels")
+if not _valid_bgs_raw:
+    raise WorkflowError(
+        "config.yaml is missing 'bg-channels' (shared with data_workflow/plot_workflow); "
+        "training_workflow needs it to validate the 'bg'/'bg_sets' selection."
+    )
+VALID_BGS = (
+    [b.strip() for b in _valid_bgs_raw.split(",")]
+    if isinstance(_valid_bgs_raw, str) else list(_valid_bgs_raw)
+)
 
 VAR_SETS = {
     "greedy": {
@@ -15,17 +30,26 @@ VAR_SETS = {
 # -----------------------
 # CONFIG
 # ----------------------
-config.setdefault("sigs", ["Tau", "fatJet", "AK15"]) 
-config.setdefault("training_channel", "mix")
-config.setdefault("sig_generator", "MADGRAPH")
-config.setdefault("bg", "TTto4Q")
-config.setdefault("num_taus", 2)
-config.setdefault("use_subjets", False)
-config.setdefault("cms_label", "Work in Progress")
-config.setdefault("compare_names", None)
-config.setdefault("use_all", True)
-config.setdefault("variables", "")
-config.setdefault("fpr", [1.0])
+# Defaults are applied in place on `config` (rather than via config.setdefault, which only
+# fills in *absent* keys) so a key that is *present but blank/null* in config.yaml (e.g. an
+# empty "variables:" field) also falls back to its default, instead of silently becoming
+# None/"None" downstream (see VAR_DIR_PREFIX below).
+_CONFIG_DEFAULTS = {
+    "sigs": ["Tau", "fatJet", "AK15"],
+    "training_channel": "mix",
+    "sig_generator": "MADGRAPH",
+    "bg": "TTto4Q",
+    "num_taus": 2,
+    "use_subjets": False,
+    "cms_label": "Work in Progress",
+    "compare_names": None,
+    "use_all": True,
+    "variables": "",
+    "fpr": [1.0],
+}
+for _key, _default in _CONFIG_DEFAULTS.items():
+    if config.get(_key) is None:
+        config[_key] = _default
 
 raw_sigs = config["sigs"]
 if isinstance(raw_sigs, str):
@@ -64,7 +88,7 @@ for bg_set_str in raw_bg_input:
     bgs = [b.strip() for b in bg_set_str.split(",")]
     for bg in bgs:
         if bg not in VALID_BGS:
-            raise ValueError(f"Background '{bg}' not found. Valid options: {VALID_BGS}")
+            raise WorkflowError(f"Background '{bg}' not found. Valid options: {VALID_BGS}")
     BG_SETS.append("_".join(bgs))
 
 def get_bg_list(bg_dir):
@@ -83,14 +107,42 @@ def get_weight_flag(bg_dir):
 # MAKE PATHS
 # ------------------------------
 
-SIG_BASE_DIR = f"/eos/user/m/mroine/NanoTuples/Htautau/data_workflow/jets/{SIG_GENERATOR}"
+SIG_BASE_DIR = f"{DATA_WORKFLOW_DIR}/jets/{SIG_GENERATOR}"
 OUT_DIR_BASE = f"results/{VAR_DIR_PREFIX}{CHANNEL}/{SIG_GENERATOR}"
+
+def _validate_training_inputs():
+    problems = []
+    known_generators = {**(config.get("signal_dirs") or {}), **(config.get("signal_das") or {})}
+    if SIG_GENERATOR not in known_generators:
+        problems.append(
+            f"sig_generator '{SIG_GENERATOR}' has no entry in signal_dirs/signal_das in config.yaml"
+        )
+    elif not os.path.isdir(SIG_BASE_DIR):
+        problems.append(
+            f"expected skimmed signal jets under {SIG_BASE_DIR} (run data_workflow's 'skim' rule first)"
+        )
+    all_bgs = {bg for bg_dir in BG_SETS for bg in get_bg_list(bg_dir)}
+    for bg in sorted(all_bgs):
+        bg_path = f"{BG_BASE_DIR}/{bg}"
+        if not os.path.isdir(bg_path):
+            problems.append(
+                f"background '{bg}': no skims found under {bg_path} "
+                "(run data_workflow's 'skim_bg' rule first)"
+            )
+    if problems:
+        raise WorkflowError(
+            "training_workflow can't find required inputs:\n  - " + "\n  - ".join(problems)
+        )
+
+_validate_training_inputs()
 
 def mode_from_base(base):
     if base == "Tau": return "Tau"
     if base == "fatJet": return "AK8"
     if base == "AK15": return "AK15"
-    raise ValueError(f"Unknown signal base {base}")
+    raise WorkflowError(
+        f"Unknown entry '{base}' in config 'sigs': expected one of Tau, fatJet, AK15"
+    )
 
 def base_from_mode(mode):
     if mode == "Tau": return "Tau"
