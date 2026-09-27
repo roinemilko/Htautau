@@ -54,6 +54,12 @@ If it falls apart you can try to find the root cause by running
 ```bash
 ./diagnose.sh              
 ```
+
+`--cores N` is a ceiling on parallelism, not a guarantee it's all used the same
+way everywhere: `training_workflow/run.sh` additionally caps how many BDT
+training/inference jobs and how many plotting/comparison jobs can run at once
+(independent of `--cores`), since those are memory-heavy per job — see
+`training_workflow/README.md#concurrency--memory`.
 ## RESULTS/
 
 ```
