@@ -33,7 +33,7 @@ else
     echo "    (skipped: $PLOTS_DIR not found - run plot_workflow first)"
 fi
 
-echo "==> Publishing training_workflow outputs"
+echo "==> Publishing outputs"
 if [[ -d "$TRAINING_DIR" ]]; then
     ln -s "$(realpath --relative-to="$RESULTS_DIR" "$TRAINING_DIR")" "$RESULTS_DIR/training"
 else
@@ -42,26 +42,12 @@ fi
 
 cp "$REPO_ROOT/config.yaml" "$RESULTS_DIR/config.snapshot.yaml"
 
-cat > "$RESULTS_DIR/MANIFEST.md" <<EOF
+cat > "$RESULTS_DIR/MANIFEST.txt" <<EOF
 # RESULTS
 
 Generated: $(date -u +"%Y-%m-%dT%H:%M:%SZ")
-Config used: config.snapshot.yaml (copy of config.yaml at publish time)
+Config used: config.snapshot.yaml
 
-This tree is derived output, rebuilt from scratch every time
-\`reproduce.sh\` or \`publish_results.sh\` runs. Every entry below is a
-symlink back into the workflow that produced it - nothing here is
-duplicated on disk.
-
-- \`<dataset>/distributions/\`  -> plot_workflow/plots/<dataset>/distributions
-- \`<dataset>/efficiencies/\`   -> plot_workflow/plots/<dataset>/efficiencies
-- \`<dataset>/sanity_checks/\`  -> plot_workflow/plots/<dataset>/sanity_checks
-- \`training/\`                 -> training_workflow/results
-  (nested by variables/training_channel/sig_generator/background-set/subjets,
-  see training_workflow/README.md)
-
-Intermediate skims (data_workflow/jets, data_workflow/background) are not
-published here since they are large ROOT files, not final results.
 EOF
 
-echo "==> Done. See $RESULTS_DIR/MANIFEST.md"
+echo "==> Done."

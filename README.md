@@ -64,7 +64,7 @@ RESULTS/
     sanity_checks/        # the legacy clustering kinmatics / sanity checks
   training/               # BDTs and all tagging efficiency results
   config.snapshot.yaml    # copy of config.yaml from runtime
-  MANIFEST.md             # result timestamp for safety, i.e. results won't be overwritten if this not present
+  MANIFEST.txt            # result timestamp for safety, i.e. results won't be overwritten if this not present
 ```
 
 ## Repo layout

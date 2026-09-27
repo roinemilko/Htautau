@@ -1,9 +1,5 @@
 #!/bin/bash
-# Checks the one thing every workflow depends on before anything else: that
-# config.yaml exists and is valid YAML. Deliberately does NOT re-check
-# individual keys here - that validation already lives in each Snakefile
-# (see check_snakefile_dags.sh), and duplicating it here would just give it a
-# second place to drift out of sync.
+# Checks that the config file isn't broken
 set -uo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)/lib/common.sh"
 cd "$REPO_ROOT"

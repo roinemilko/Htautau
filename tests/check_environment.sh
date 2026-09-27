@@ -40,7 +40,6 @@ if command -v voms-proxy-info >/dev/null 2>&1; then
     else
         warn "no valid grid proxy (voms-proxy-info --exists failed)."
         info "Run 'voms-proxy-init --voms cms' before using DAS-backed signal_das/bg_das entries."
-        info "Not a hard failure here: only required by the 'data' stage for DAS-backed datasets."
     fi
 fi
 

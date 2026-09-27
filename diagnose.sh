@@ -1,11 +1,6 @@
 #!/bin/bash
-# Runs every diagnostic check in tests/ and prints a clear pass/fail/skip
-# summary, so a fresh checkout (or a broken one) tells you exactly what's
-# wrong and where, without having to run the full analysis pipeline first.
-#
-# Exit code convention used by every check script in tests/:
 #   0 = pass, 1 = fail, 2 = skip (not applicable here, e.g. a tool isn't
-#   installed or a proxy/data hasn't been set up yet - not a failure).
+#   installed).
 set -uo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
@@ -96,9 +91,6 @@ run_pytest() {
         return
     fi
 
-    # -p no:ctest_measurements_reporter: LCG_109 auto-registers GaudiTesting's
-    # CTest/CDash reporter plugin, which dumps a DartMeasurement XML blob per
-    # test unless disabled - noisy here since we're not running under ctest.
     ( cd "$TESTS_DIR" && "$python" -m pytest "${PYTEST_FILES[@]}" -q -p no:ctest_measurements_reporter )
     local code=$?
     if [[ $code -eq 0 ]]; then
