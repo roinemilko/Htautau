@@ -83,15 +83,12 @@ void DecayChannelvEfficiency(
 
     TString rawInc = TString(jet_path) + "/RawEventInfo.root";
 
-    // Removed the 4th "all channels" entry completely
     Channel channels[3] = {
         {"had-had", "is_truth_hadhad == 1", kBlack, 20},
         {"e-had",   "is_truth_ehad == 1",   kRed,   21},
         {"#mu-had", "is_truth_muhad == 1",  kBlue,  22}
     };
 
-    // AK4 is legacy and was never actually plotted here (the loop below always
-    // skipped it), so its entry has been dropped rather than kept as dead wiring.
     Jet jets[2] = {
         {"FatJet", "AK8", Form("%s/fatJet.root", jet_path), "fj_pt/genH_pt",   "genH_pt", 200.0},
         {"AK15", "AK15", Form("%s/AK15.root",   jet_path), "ak15_pt/genH_pt", "genH_pt", 150.0}

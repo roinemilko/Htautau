@@ -14,6 +14,7 @@ Diagnostic checks for this repository. Run everything with `/diagnose.sh` from r
 |---|---|
 | `check_environment.sh` | Checks dependencies, LGC environment and voms proxy health |
 | `check_config_yaml.sh` | `config.yaml` exists and is valid YAML |
+| `check_memory.sh` | Reports system memory and the max `train_bdt`/`run_bdt_inference` concurrency it supports; fails if `training_workflow/run.sh`'s `bdt_slot` is set too high for it |
 | `check_cpp_macros_compile.sh` | ROOT macros (skimmer + plotting) compile |
 | `check_snakefile_dags.sh` | Unit test DAG by running `all` in each workflow against the  `config.yaml`  |
 | `check_orchestrator.sh` | Regression tests for `reproduce.sh` / `publish_results.sh` |

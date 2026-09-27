@@ -16,9 +16,7 @@
     #include <cstring>
     #include <vector>
 
-    // AK4 is legacy and often skipped upstream (--exclude "AK4"), so fAK4 may be
-    // an empty path or point at a file that was never produced. Detect that up
-    // front and simply drop the AK4 series everywhere below when it's not there.
+    // For skipping legacy AK4 if not exist
     static bool FileUsable(const char* fname) {
         if (!fname || strlen(fname) == 0) return false;
         TFile* f = TFile::Open(fname, "READ");

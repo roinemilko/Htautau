@@ -23,26 +23,6 @@ D-->F[Model inference]
 ./run.sh all --cores N
 ```
 
-## Concurrency / memory
-
-`--cores N` controls how many Snakemake jobs may run at once in general, but
-some rules here are memory-heavy per job, so `run.sh` additionally caps them
-with dedicated resource pools (independent of `--cores`):
-
-| Resource | Pool size (in `run.sh`) | Applies to | Why |
-|---|---|---|---|
-| `bdt_slot` | 1 | `train_bdt`, `run_bdt_inference` | Each spins up its own dask `LocalCluster` (`n_workers=threads`, `memory_limit=5GB`/worker), ~20GB per job at the default `threads: 4` |
-| `plot_slot` | 4 | `plot_correlations`, `run_compare_bdts`, `run_compare_tagging_eff`, `run_absolute_evaluation_roc`, `run_absolute_evaluation_eff`, `run_absolute_evaluation_animation` | Each loads full inference parquets and/or raw ROOT trees into memory; unthrottled these default to `threads: 1` so a high `--cores` count can run dozens at once |
-
-So `./run.sh all --cores 24` still uses all 24 cores for the skim/plot
-workflows and for scheduling non-BDT rules here, but never runs more than one
-`train_bdt`/`run_bdt_inference` job or more than four of the plotting/compare
-jobs simultaneously. If you still see OOM crashes, lower the relevant pool
-size (`bdt_slot=1 plot_slot=4` etc.) in `run.sh`'s `--resources` flag. Passing
-your own `--resources` on the command line overrides these defaults entirely.
-
-`run_visualize_models` is not throttled — it only reads a small JSON model
-file, not bulk data.
 
 ## Rules
 
@@ -56,7 +36,9 @@ file, not bulk data.
 | `run_absolute_evaluation_roc` / `_eff` / `_animation` | ROC/rejection, signal-efficiency-vs-pT, and an animated version, with all events, setting unmatched as 0 score |
 | `run_visualize_models` | Renders some sample trees from models |
 
+## Concurrency
 
+Each training job takes quite a bit of memory (up to about 20Gb for my datasets) so concurrency is scaled down from --cores N with dedicated resource pools. Training/inference jobs get one slot by default and the plotting jobs get 4. If your node has better memory you can bypass it with --resources and if you get OOM errors run diagnose.sh to figure out how to scale down.
 
 ### Naming note
 

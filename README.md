@@ -68,9 +68,10 @@ RESULTS/
     distributions/
     efficiencies/         # all reco. efficiency related plots
     sanity_checks/        # the legacy clustering kinmatics / sanity checks
-  training/               # BDTs and all tagging efficiency results
+    training/              # BDTs and all tagging efficiency results for this dataset
+                            # (only present for datasets training_workflow ran on, e.g. MADGRAPH)
   config.snapshot.yaml    # copy of config.yaml from runtime
-  MANIFEST.txt            # result timestamp for safety, i.e. results won't be overwritten if this not present
+  MANIFEST.md             # result timestamp for safety, i.e. results won't be overwritten if this not present
 ```
 
 ## Repo layout

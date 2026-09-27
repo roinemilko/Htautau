@@ -30,10 +30,6 @@ VAR_SETS = {
 # -----------------------
 # CONFIG
 # ----------------------
-# Defaults are applied in place on `config` (rather than via config.setdefault, which only
-# fills in *absent* keys) so a key that is *present but blank/null* in config.yaml (e.g. an
-# empty "variables:" field) also falls back to its default, instead of silently becoming
-# None/"None" downstream (see VAR_DIR_PREFIX below).
 _CONFIG_DEFAULTS = {
     "sigs": ["Tau", "fatJet", "AK15"],
     "training_channel": "mix",
@@ -243,8 +239,6 @@ rule plot_correlations:
         subjet_flag = SUBJET_FLAG,
         cms_label = config["cms_label"],
         var_flag = lambda w: f"--variables {' '.join(get_vars_for_mode(mode_from_base(w.base_sig), config['variables']))}" if get_vars_for_mode(mode_from_base(w.base_sig), config['variables']) else ""
-    # Loads full sig/bg trees into memory; throttled like the other plotting rules
-    # below (see run.sh for the pool size) so --cores doesn't run dozens at once.
     resources:
         plot_slot = 1
     shell:
@@ -274,10 +268,6 @@ rule train_bdt:
         subjet_flag = SUBJET_FLAG,
         var_flag = lambda w: f"--variables {' '.join(get_vars_for_mode(get_mode_from_rid(w.r_id), config['variables']))}" if get_vars_for_mode(get_mode_from_rid(w.r_id), config['variables']) else ""
     threads: 4
-    # Each job spins up its own dask LocalCluster (n_workers=threads, memory_limit=5GB
-    # per worker, i.e. ~20GB for this rule's default threads:4). Running many of these
-    # at once under a high --cores count OOMs the machine, so throttle concurrency
-    # with a shared resource independent of --cores (see run.sh for the pool size).
     resources:
         bdt_slot = 1
     shell:
@@ -313,8 +303,6 @@ rule run_bdt_inference:
         var_flag = lambda w: f"--variables {' '.join(get_vars_for_mode(get_mode_from_rid(w.r_id), config['variables']))}" if get_vars_for_mode(get_mode_from_rid(w.r_id), config['variables']) else "",
         weight_flag = lambda w: get_weight_flag(w.bg_dir)
     threads: 4
-    # Same dask-memory-per-job concern as rule train_bdt: share the same throttle
-    # pool so training and inference jobs don't stack on top of each other either.
     resources:
         bdt_slot = 1
     shell:
@@ -353,8 +341,6 @@ rule run_compare_bdts:
         fpr = lambda wildcards: float(wildcards.fpr_str) / 100.0,
         weight_flag = lambda w: get_weight_flag(w.bg_dir),
         cms_label = config["cms_label"]
-    # Loads all COMPARE_MODES' inference parquets into memory at once; throttle
-    # concurrency so --cores doesn't run dozens of these simultaneously (see run.sh).
     resources:
         plot_slot = 1
     shell:

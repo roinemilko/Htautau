@@ -34,6 +34,7 @@ done
 SHELL_CHECKS=(
     check_environment.sh
     check_config_yaml.sh
+    check_memory.sh
     check_cpp_macros_compile.sh
     check_snakefile_dags.sh
     check_orchestrator.sh

@@ -1,7 +1,5 @@
 #!/bin/bash
-# Purely informational: reports how far along this checkout is (which
-# outputs already exist on disk). Never fails - a fresh checkout is expected
-# to have nothing yet, that's not a problem with the repo.
+# reports which results exist on this disk
 set -uo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)/lib/common.sh"
 cd "$REPO_ROOT"
