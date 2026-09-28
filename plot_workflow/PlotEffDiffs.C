@@ -8,6 +8,7 @@
 #include "TLine.h"
 #include "TString.h"
 #include "TStyle.h"
+#include "TROOT.h"
 #include "eff_helpers.h"
 #include <iostream>
 #include <cmath>
@@ -67,7 +68,7 @@ TGraphAsymmErrors* MakeJetEffDiff(
     g->SetMarkerStyle(marker);
     g->SetMarkerColor(color);
     g->SetLineColor(color);
-    g->SetMarkerSize(0.7);
+    g->SetMarkerSize(0.8);
 
     std::cout << prefix << ": plotted difference" << std::endl;
     return g;
@@ -136,12 +137,13 @@ TGraph* PredictEffDiffFromHad(
     return gPred;
 }
 
-
 void PlotEffDiffs(
-    const char* save_path = "/eos/user/m/mroine/www/VBFHHto2B2Tau_Par-CV-1-C2V-0-C3-1_TuneCP5_13p6TeV_madgraph-pythia8",
-    const char* jet_path  = "/eos/user/m/mroine/NanoTuples/Htautau/workflow/jets/VBFHHto2B2Tau_Par-CV-1-C2V-0-C3-1_TuneCP5_13p6TeV_madgraph-pythia8"
+    const char* save_path = "/eos/user/m/mroine/NanoTuples/Htautau/plot_workflow/plots/MADGRAPH",
+    const char* jet_path  = "/eos/user/m/mroine/NanoTuples/Htautau/data_workflow/jets/MADGRAPH"
 ) {
     gStyle->SetOptStat(0);
+    gStyle->SetPadTickX(1);
+    gStyle->SetPadTickY(1);
 
     const int nBins = 100;
     const float vMin = 0.f;
@@ -150,106 +152,110 @@ void PlotEffDiffs(
     TString rawHad = jet_path + TString("/RawEventInfo_hadhad.root");
     TString rawInc = jet_path + TString("/RawEventInfo.root");
 
-    TString gAK4_path_hadhad = TString(jet_path) + "/Jet_hadhad.root";
-    TString gAK4_path = TString(jet_path) + "/Jet.root";
-    TGraphAsymmErrors* gAK4 = MakeJetEffDiff(
-        "ak4",
-        rawHad, rawInc,
-        gAK4_path_hadhad, gAK4_path,
-        "genH_pt_raw", "genH_pt",
-        nBins, vMin, vMax, kBlue, 20
-    );
-
     TString gAK8_path_hadhad = TString(jet_path) + "/fatJet_hadhad.root";
     TString gAK8_path = TString(jet_path) + "/fatJet.root";
     TGraphAsymmErrors* gAK8 = MakeJetEffDiff(
-        "ak8",
-        rawHad, rawInc,
-        gAK8_path_hadhad, gAK8_path,
-        "genH_pt_raw", "genH_pt",
-        nBins, vMin, vMax, kRed, 20
+        "ak8", rawHad, rawInc, gAK8_path_hadhad, gAK8_path, "genH_pt_raw", "genH_pt", nBins, vMin, vMax, kBlack, 20
     );
 
     TString gAK15_path_hadhad = TString(jet_path) + "/AK15_hadhad.root";
     TString gAK15_path = TString(jet_path) + "/AK15.root";
     TGraphAsymmErrors* gAK15 = MakeJetEffDiff(
-        "ak15",
-        rawHad, rawInc,
-        gAK15_path_hadhad, gAK15_path,
-        "genH_pt_raw", "genH_pt",
-        nBins, vMin, vMax, kGreen + 2, 20
+        "ak15", rawHad, rawInc, gAK15_path_hadhad, gAK15_path, "genH_pt_raw", "genH_pt", nBins, vMin, vMax, kBlack, 20
     );
+  
+    const double s = 0.75; 
 
-
-    const double s = 0.77;
-
-    TEfficiency* eHadAK4  = BuildHadEff("ak4_had",  rawHad, gAK4_path_hadhad,  "genH_pt_raw", "genH_pt", nBins, vMin, vMax);
     TEfficiency* eHadAK8  = BuildHadEff("ak8_had",  rawHad, gAK8_path_hadhad,  "genH_pt_raw", "genH_pt", nBins, vMin, vMax);
     TEfficiency* eHadAK15 = BuildHadEff("ak15_had", rawHad, gAK15_path_hadhad, "genH_pt_raw", "genH_pt", nBins, vMin, vMax);
 
     TGraph* pAK8  = PredictEffDiffFromHad(eHadAK8,  s, "pred_ak8",  (2 * 125) / 0.8, vMax, 0.8);
     TGraph* pAK15 = PredictEffDiffFromHad(eHadAK15, s, "pred_ak15", (2 * 125) / 1.5, vMax, 1.5);
 
-    pAK8 ->SetLineColor(kRed);     pAK8 ->SetLineStyle(2); pAK8 ->SetLineWidth(2);
-    pAK15->SetLineColor(kGreen+2); pAK15->SetLineStyle(2); pAK15->SetLineWidth(2);
+    pAK8 ->SetLineColor(kBlue);  pAK8 ->SetLineStyle(1); pAK8 ->SetLineWidth(2);
+    pAK15->SetLineColor(kBlue); pAK15->SetLineStyle(1); pAK15->SetLineWidth(2);
 
+    // Create a wide canvas to hold two side-by-side pads
+    TCanvas c("c_diff_eff", "", 1200, 600);
+    c.Divide(2, 1);
 
+    // Helper lambda to draw CMS styling text in each pad
+    auto drawCMSLabels = [](const char* jetLabel) {
+        TLatex latex;
+        latex.SetNDC();
+        latex.SetTextFont(62);
+        latex.SetTextSize(0.045);
+        latex.DrawLatex(0.12, 0.92, "CMS");
+        
+        latex.SetTextFont(52);
+        latex.SetTextSize(0.045);
+        latex.DrawLatex(0.22, 0.92, "Simulation Private");
+        
+        latex.SetTextAlign(31); 
+        latex.SetTextFont(42);
+        latex.SetTextSize(0.045);
+        latex.DrawLatex(0.92, 0.92, "13.6 TeV");
+        
+        // Draw the Jet label (AK8/AK15) in the top right, inside the plot frame
+        latex.SetTextAlign(31);
+        latex.DrawLatex(0.88, 0.83, jetLabel);
+    };
 
-    TCanvas c("c_diff_eff", "", 900, 700);
-    gPad->SetTopMargin(0.08);
-    gPad->SetRightMargin(0.08);
+    // --- Pad 1: AK8 ---
+    c.cd(1);
+    gPad->SetTopMargin(0.10);
+    gPad->SetRightMargin(0.06);
+    gPad->SetLeftMargin(0.12);
 
+    gAK8->SetTitle(";genH p_{T} [GeV];#Delta Matching Efficiency");
+    gAK8->Draw("APLE"); 
+    gAK8->GetYaxis()->SetRangeUser(-0.3, 0.1); // Scaled for delta efficiency range
+    gAK8->GetXaxis()->SetRangeUser(0, 800);
+    gAK8->GetYaxis()->SetTitleOffset(1.3);
 
-    gAK4->SetTitle(";Higgs p_{T} [GeV];#Delta Matching Efficiency");
+    pAK8->Draw("L SAME");
 
-    gAK4->SetMarkerSize(0.8);
-    gAK8->SetMarkerSize(0.8);
-    gAK15->SetMarkerSize(0.8);
+    TLine zero8(0, 0, 800, 0);
+    zero8.SetLineStyle(2);
+    zero8.Draw("same");
 
-    gAK4->Draw("APLE");
-    gAK4->GetYaxis()->SetRangeUser(-0.3, 0.3);
-    gAK4->GetXaxis()->SetRangeUser(0, 800);
-    gAK4->GetYaxis()->SetLabelSize(0.035);
-    gAK4->GetXaxis()->SetLabelSize(0.035);
+    drawCMSLabels("AK8");
 
-    gAK8->Draw("PLE SAME");
-    gAK15->Draw("PLE SAME");
+    TLegend leg8(0.40, 0.15, 0.88, 0.30);
+    leg8.SetBorderSize(0);
+    leg8.SetFillStyle(0);
+    leg8.SetTextSize(0.04);
+    leg8.AddEntry(gAK8, "Simulation", "pe");
+    leg8.AddEntry(pAK8, "Prediction", "l");
+    leg8.Draw();
 
-    pAK8 ->Draw("L SAME");
+    // --- Pad 2: AK15 ---
+    c.cd(2);
+    gPad->SetTopMargin(0.10);
+    gPad->SetRightMargin(0.06);
+    gPad->SetLeftMargin(0.12);
+
+    gAK15->SetTitle(";genH p_{T} [GeV];#Delta Matching Efficiency");
+    gAK15->Draw("APLE");
+    gAK15->GetYaxis()->SetRangeUser(-0.3, 0.1);
+    gAK15->GetXaxis()->SetRangeUser(0, 800);
+    gAK15->GetYaxis()->SetTitleOffset(1.3);
+
     pAK15->Draw("L SAME");
 
-    TLine zero(0, 0, 800, 0);
-    zero.SetLineStyle(2);
-    zero.Draw("same");
+    TLine zero15(0, 0, 800, 0);
+    zero15.SetLineStyle(2);
+    zero15.Draw("same");
 
-    TLegend leg(0.55, 0.60, 0.83, 0.83);
-    leg.SetBorderSize(0);
-    leg.SetFillStyle(0);
-    leg.AddEntry(gAK4,  "AK4", "lp");
-    leg.AddEntry(gAK8,  "AK8", "lp");
-    leg.AddEntry(pAK8,  "prediction", "l");
-    leg.AddEntry(gAK15, "AK15", "lp");
-    leg.AddEntry(pAK15, "prediction", "l");
-    leg.SetTextSize(0.04);
-    leg.Draw();
+    drawCMSLabels("AK15");
 
-    TLatex latex;
-    latex.SetNDC();
-    latex.SetTextFont(62);
-    latex.SetTextSize(0.05);
-    latex.DrawLatex(0.13, 0.86, "CMS");
-    latex.SetTextFont(52);
-    latex.SetTextSize(0.035);
-    latex.DrawLatex(0.13, 0.82, "Simulation, Work in Progress");
-    latex.SetTextFont(42);
-    latex.SetTextSize(0.04);
-    latex.DrawLatex(0.13, 0.76, "H #rightarrow #tau#tau (125 GeV)");
-    latex.SetTextAlign(31); 
-    latex.SetTextFont(42);
-    latex.SetTextSize(0.040);
-    latex.DrawLatex(0.90, 0.93, "13.6 TeV");
-
-
+    TLegend leg15(0.40, 0.15, 0.88, 0.30);
+    leg15.SetBorderSize(0);
+    leg15.SetFillStyle(0);
+    leg15.SetTextSize(0.04);
+    leg15.AddEntry(gAK15, "Simulation", "pe");
+    leg15.AddEntry(pAK15, "Prediction", "l");
+    leg15.Draw();
 
     c.SaveAs(TString(save_path) + "/MatchingEffDiff_inclusive_minus_hadhad_allJets.png");
-}   
+}

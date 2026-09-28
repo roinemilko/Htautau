@@ -11,7 +11,7 @@
 #include <TSystem.h>
 
 void BuildBg(
-    const char* file_pattern = "/eos/user/m/mroine/NanoTuples/Htautau/data_workflow/bg_data/DYto2Tau/nano_*.root",
+    const char* pattern = "/eos/user/m/mroine/NanoTuples/Htautau/data_workflow/bg_data/DYto2Tau/nano_*.root",
     const char* save_directory = "/eos/user/m/mroine/NanoTuples/Htautau/data_workflow/background/POWHEG",
     const char* identifyer = "_DYto2Tau",
     const bool include_Tau = true,
@@ -27,7 +27,13 @@ void BuildBg(
     gSystem->mkdir(save_directory, true);
 
     TChain chain("Events");
-    chain.Add(file_pattern);
+    std::ifstream infile(pattern);
+    std::string line;
+    while (std::getline(infile, line)) {
+        if (!line.empty()) {
+            chain.Add(line.c_str());
+        }
+    }
     ULong64_t n_raw = chain.GetEntries();
 
     ROOT::RDataFrame df(chain);
@@ -300,7 +306,7 @@ void BuildBg(
 
     std::cout << "Saving all event ids " << std::endl;
     std::string raw_out_dir = std::string(save_directory) + "/RawEventInfoBG" + std::string(identifyer) + ".root";
-    std::vector<std::string> raw_columns = {"event", "NRawEvents"};
+    std::vector<std::string> raw_columns = {"event", "NRawEvents", "Pileup_nPU"};
     snapshots.push_back(df_wRaw.Snapshot("Events", raw_out_dir, raw_columns, opts));
 
     if (!snapshots.empty()) {

@@ -440,6 +440,7 @@ const std::vector<std::string> raw_data_dict = {
     "genH_phi_raw",
     "dR_tau1_tau2_raw",
     "PV_npvsGood",
+    "Pileup_nPU",
     "Pileup_nTrueInt",
     "PV_npvs",
     "genTau1_pt_raw",

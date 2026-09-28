@@ -22,7 +22,7 @@ inline float dR(float eta1, float phi1, float eta2, float phi2) {
 }
 
 void BuildData(
-    const char* file_pattern = "nano_*.root",
+    const char* pattern = "nano_*.root",
     bool include_AK4 = true, bool include_AK8 = true, bool include_AK15 = true, bool include_RawData = false, bool include_Tau = true,
     bool require_hadhad = false,
     const char* save_directory = "jets/",
@@ -41,7 +41,13 @@ void BuildData(
 
 
     TChain chain("Events");
-    chain.Add(file_pattern);
+    std::ifstream infile(pattern);
+    std::string line;
+    while (std::getline(infile, line)) {
+        if (!line.empty()) {
+            chain.Add(line.c_str());
+        }
+    }
     ULong64_t n_raw = chain.GetEntries();    
 
     ROOT::RDataFrame df(chain);

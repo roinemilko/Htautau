@@ -2,7 +2,6 @@ import argparse
 import os
 import pandas as pd
 
-# Adjust these imports to match whatever you named the files containing your loader functions!
 from uproot_data import load_mixed_tau_data
 from uproot_fat import load_mixed_fatjet_data
 
@@ -19,18 +18,17 @@ def main():
     
     args = parser.parse_args()
 
-    # Parse the comma-separated input string into a list
     paths = [p.strip() for p in args.inputs.split(",") if p.strip()]
 
     print(f"Converting {len(paths)} ROOT file(s) for mode {args.mode}...")
 
-    # Load the data using your memory-safe accumulator functions
+
     if args.mode == "Tau":
         df = load_mixed_tau_data(
             paths=paths,
             label=args.label,
             num_taus=args.num_taus,
-            variables=None,  # Falls back to your default variable lists
+            variables=None, 
             apply_weights=args.use_weights
         )
     elif args.mode in ["AK8", "AK15"]:
@@ -45,12 +43,10 @@ def main():
     else:
         raise ValueError(f"Unknown mode: {args.mode}")
 
-    # Ensure the target directory exists
     os.makedirs(os.path.dirname(os.path.abspath(args.out)), exist_ok=True)
 
-    # Save to Parquet
     print(f"Saving {len(df)} events to {args.out}...")
-    df.to_parquet(args.out, index=False)
+    df.to_parquet(args.out, write_index=False)
     print("Done!")
 
 if __name__ == "__main__":

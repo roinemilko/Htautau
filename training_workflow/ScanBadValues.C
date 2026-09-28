@@ -10,7 +10,7 @@
 
 void ScanBadValues(const char* filename = "/eos/user/m/mroine/NanoTuples/Htautau/data_workflow/jets/POWHEG/Tau_hadhad.root") {
     
-    // Only the float variables used in TMVA
+
     const char* vars = "tau_pt,tau_eta,tau_phi,tau_mass,tau_dxy,tau_dz,tau_ipLengthSig,"
                        "tau_chargedIso,tau_neutralIso,tau_rawIso,tau_rawIsodR03,tau_puCorr,"
                        "tau_rawDeepTauVSjet,tau_rawDeepTauVSe,tau_rawDeepTauVSmu,"
@@ -21,7 +21,6 @@ void ScanBadValues(const char* filename = "/eos/user/m/mroine/NanoTuples/Htautau
                        "tau_probDM10UParT,tau_probDM11UParT,tau_ptCorrUParT,tau_qConfUParT,"
                        "tau_rawUParTVSe,tau_rawUParTVSjet,tau_rawUParTVSmu";
 
-    // Parse the comma-separated string
     std::vector<std::string> varList;
     TString tVars(vars);
     TObjArray* tokens = tVars.Tokenize(",");
@@ -32,7 +31,6 @@ void ScanBadValues(const char* filename = "/eos/user/m/mroine/NanoTuples/Htautau
     }
     delete tokens;
 
-    // Open file and setup TTreeReader
     TFile* f = TFile::Open(filename, "READ");
     if (!f || f->IsZombie()) {
         std::cerr << "Failed to open file: " << filename << std::endl;
@@ -41,7 +39,6 @@ void ScanBadValues(const char* filename = "/eos/user/m/mroine/NanoTuples/Htautau
     
     TTreeReader reader("Events", f);
 
-    // Create a TTreeReaderValue for every variable dynamically
     std::vector<TTreeReaderValue<ROOT::VecOps::RVec<float>>*> readers;
     for (const auto& v : varList) {
         readers.push_back(new TTreeReaderValue<ROOT::VecOps::RVec<float>>(reader, v.c_str()));
@@ -52,7 +49,6 @@ void ScanBadValues(const char* filename = "/eos/user/m/mroine/NanoTuples/Htautau
     Long64_t eventNum = 0;
     int badEvents = 0;
     
-    // Loop over all events
     while (reader.Next()) {
         bool eventHasBadValue = false;
         
@@ -61,7 +57,6 @@ void ScanBadValues(const char* filename = "/eos/user/m/mroine/NanoTuples/Htautau
             
             auto& vec = **(readers[i]);
             
-            // Check up to the first 2 taus (index 0 and 1)
             for (size_t j = 0; j < vec.size() && j < 2; ++j) { 
                 float val = vec[j];
                 
@@ -76,7 +71,6 @@ void ScanBadValues(const char* filename = "/eos/user/m/mroine/NanoTuples/Htautau
         if (eventHasBadValue) badEvents++;
         eventNum++;
         
-        // Stop after finding the first few bad events to keep the terminal clean
         if (badEvents >= 20) {
             std::cout << "\nFound 20 bad events. Stopping early..." << std::endl;
             break;
@@ -85,7 +79,6 @@ void ScanBadValues(const char* filename = "/eos/user/m/mroine/NanoTuples/Htautau
 
     std::cout << "Scan complete." << std::endl;
 
-    // Cleanup
     for (auto r : readers) {
         delete r;
     }

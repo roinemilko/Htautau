@@ -44,17 +44,27 @@ def main():
     parser.add_argument("--mode", default="tau", choices=["Tau", "AK8", "AK15"], help="Object type to process")
     parser.add_argument("--use_subjets", action="store_true", help="Require 2 subjets and load subjet features (AK8/AK15 only)")
     parser.add_argument("--use_weights", action="store_true", help="Apply cross-section weights to evaluation")
+    parser.add_argument("--sig_xsec", type=float, default=None, help="Signal cross-section in pb, required with --use_weights")
+    parser.add_argument("--bg_xsec", default=None, help="Comma-separated Name=xsec[pb] pairs for background weighting (e.g. TTto4Q=419.7,DYto2Tau=2125), required with --use_weights")
     parser.add_argument("--n_workers", default=4)
+    parser.add_argument("--worker_memory_gb", type=int, default=5, help="Per-worker dask memory_limit in GB")
     args = parser.parse_args()
+
+    if args.use_weights and args.sig_xsec is None:
+        parser.error("--sig_xsec is required when --use_weights is set")
+    if args.use_weights and not args.bg_xsec:
+        parser.error("--bg_xsec is required when --use_weights is set")
+    args.bg_xsec = parse_xsec_arg(args.bg_xsec)
 
     hep.style.use("CMS")
 
     dask.config.set({
-        'distributed.worker.memory.target': 0.60, 
+        'distributed.worker.memory.target': 0.60,
         'distributed.worker.memory.spill': 0.70,
-        'distributed.worker.memory.pause': 0.85, 
+        'distributed.worker.memory.pause': 0.85,
     })
-    client = Client(n_workers=int(args.n_workers), threads_per_worker=4, memory_limit='5GB')
+
+    client = Client(n_workers=int(args.n_workers), threads_per_worker=4, memory_limit=f'{args.worker_memory_gb}GB', dashboard_address=":0")
     print(f"Dask Dashboard: {client.dashboard_link}")
 
     print("Loading model...")
@@ -132,12 +142,7 @@ def main():
             
         lumi_pb = LUMI_FB * 1000
 
-        if "MADGRAPH" in args.sig:
-            sig_process = "VBF"
-        elif "POWHEG" in args.sig:
-            sig_process = "ggF"
-        
-        sig_physical_weight = (XSEC_DICT[sig_process] * lumi_pb) / n_gen_total
+        sig_physical_weight = (args.sig_xsec * lumi_pb) / n_gen_total
         
         df_eval.loc[df_eval["label"] == 1, "weight"] = sig_physical_weight
         print(f"Signal weight: {sig_physical_weight}")
@@ -161,6 +166,8 @@ def main():
     ax.plot([0, 1], [0, 1], linestyle='--')
     ax.set_xlabel('Background efficiency')
     ax.set_ylabel('Signal efficiency')
+    ax.set_yscale("log")
+    ax.set_xscale("log")
     ax.legend()
     hep.cms.label(args.cms_label, data=False, rlabel=r"$H \to \tau\tau$ (125 GeV)", ax=ax, loc=3, fontsize=14)
     fig.tight_layout()
@@ -298,7 +305,6 @@ def main():
     ax_yield.bar(bin_centers, n_sig_list, width=bin_widths, alpha=0.5, label="Signal", color="blue")
     ax_yield.bar(bin_centers, n_bg_list, width=bin_widths, alpha=0.5, label="Background", color="red")
 
-    ax_yield.set_yscale("log")
     ax_yield.set_xlabel(f"Reconstructed Object $p_T$ [GeV]")
     ax_yield.set_ylabel("Events")
     ax_yield.grid(axis='y', linestyle=':', alpha=0.7)

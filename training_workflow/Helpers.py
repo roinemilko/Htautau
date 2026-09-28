@@ -10,38 +10,41 @@ BG_STRING_DICT = {
     "DYto2Tau": r"DY \to \tau\tau"
 }
 
-XSEC_DICT = {
-    "TTto4Q": 419.7,         # NNLO+NNLL inclusive ttbar * BR(W->qq)^2
-    "TTtoLNu2Q": 405.7,      # NNLO+NNLL inclusive ttbar * 2*BR(W->qq)*BR(W->lv)
-    "TTto2L2Nu": 98,       # NNLO+NNLL inclusive ttbar * BR(W->lv)^2
-    "DYto2Tau": 2219,      # NNLO DYJetsToLL M > 50 GeV
-    
-    
-    "VBF": 0.02939443, 
-    "ggF": 51.72
-}
-
 LUMI_FB = 137.0
+
+def parse_xsec_arg(raw):
+    """Parse a 'Name=xsec[pb],Name2=xsec2[pb]' CLI string into {name: float}."""
+    if not raw:
+        return {}
+    result = {}
+    for pair in raw.split(","):
+        pair = pair.strip()
+        if not pair:
+            continue
+        key, _, value = pair.partition("=")
+        result[key.strip()] = float(value)
+    return result
 
 def load_data(sig_path, bg_path, mode, args, sig_vars=None, bg_vars=None):
     """Caller for data loaders"""
 
     sig_paths = sig_path.split(',')
     bg_paths = bg_path.split(',')
+    bg_xsec = getattr(args, "bg_xsec", None) or {}
 
     if mode == "Tau":
         df_sig = load_mixed_tau_data(
             sig_paths, label=1, num_taus=args.num_taus, variables=sig_vars, apply_weights=args.use_weights
         )
         df_bg = load_mixed_tau_data(
-            bg_paths, label=0, num_taus=args.num_taus, variables=bg_vars, apply_weights=args.use_weights
-        )        
+            bg_paths, label=0, num_taus=args.num_taus, variables=bg_vars, apply_weights=args.use_weights, xsec_dict=bg_xsec
+        )
     else:
         df_sig = load_mixed_fatjet_data(
             sig_paths, label=1, jet_type=mode, use_subjets=args.use_subjets, variables=sig_vars, apply_weights=args.use_weights
         )
         df_bg = load_mixed_fatjet_data(
-            paths=bg_paths, label=0, jet_type=mode, use_subjets=args.use_subjets, variables=bg_vars, apply_weights=args.use_weights
+            paths=bg_paths, label=0, jet_type=mode, use_subjets=args.use_subjets, variables=bg_vars, apply_weights=args.use_weights, xsec_dict=bg_xsec
         )
 
     return df_sig, df_bg

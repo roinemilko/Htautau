@@ -13,6 +13,17 @@
     #include "TFile.h"
     #include "TTree.h"
     #include "TH2F.h"
+    #include <cstring>
+    #include <vector>
+
+    // For skipping legacy AK4 if not exist
+    static bool FileUsable(const char* fname) {
+        if (!fname || strlen(fname) == 0) return false;
+        TFile* f = TFile::Open(fname, "READ");
+        bool ok = f && !f->IsZombie();
+        if (f) f->Close();
+        return ok;
+    }
 
     void PlotEfficiencies(const char* save_path = "/eos/user/m/mroine/www/VBFHHto2B2Tau_Par-CV-1-C2V-0-C3-1_TuneCP5_13p6TeV_madgraph-pythia8",
         const char* fRaw  = "/eos/user/m/mroine/NanoTuples/Htautau/workflow/jets/VBFHHto2B2Tau_Par-CV-1-C2V-0-C3-1_TuneCP5_13p6TeV_madgraph-pythia8/RawEventInfo.root",
@@ -24,65 +35,56 @@
     ) {
 
         TString hadhad_string = hadhad ? "_hadhad" : "";
+        const bool hasAK4 = FileUsable(fAK4);
+        if (!hasAK4) {
+            std::cout << "AK4 input not available, dropping AK4 series from this plot." << std::endl;
+        }
 
         TCanvas* c1 = new TCanvas("c1", "", 1800, 1200);
         c1->Divide(3, 2);
 
         auto drawEffPlot = [&](int padNum, const char* rawVar, const char* jetVar, const char* rawCut, const char* jetCut,
                             int nBins, float vMin, float vMax, const char* xAxisTitle, double yMax) {
-            
+
             c1->cd(padNum);
             gPad->SetTopMargin(0.10);
 
             // Unique name
             TString hPrefix = Form("pad%d", padNum);
 
-
             TH1F* h_den = new TH1F(hPrefix + "_den",  "", nBins, vMin, vMax);
-            TH1F* h_num_AK4 = new TH1F(hPrefix + "_ak4",  "", nBins, vMin, vMax);
-            TH1F* h_num_AK8 = new TH1F(hPrefix + "_ak8",  "", nBins, vMin, vMax);
-            TH1F* h_num_AK15 = new TH1F(hPrefix + "_ak15", "", nBins, vMin, vMax);
-            TH1F* h_num_Tau = new TH1F(hPrefix + "_Tau", "", nBins, vMin, vMax);
-
             ProjectFromTree(fRaw, h_den, rawVar, rawCut);
-            ProjectFromTree(fAK4, h_num_AK4, jetVar, jetCut);
-            ProjectFromTree(fAK8, h_num_AK8, jetVar, jetCut);
-            ProjectFromTree(fAK15, h_num_AK15, jetVar, jetCut);
-            ProjectFromTree(fTau, h_num_Tau, jetVar, jetCut);
 
-            TEfficiency* effAK4  = new TEfficiency(*h_num_AK4, *h_den);
-            TEfficiency* effAK8  = new TEfficiency(*h_num_AK8, *h_den);
-            TEfficiency* effAK15 = new TEfficiency(*h_num_AK15, *h_den);
-            TEfficiency* effTau = new TEfficiency(*h_num_Tau, *h_den);
+            struct EffSeries { const char* file; const char* tag; int color; };
+            std::vector<EffSeries> series;
+            if (hasAK4) series.push_back({fAK4, "ak4", kBlue});
+            series.push_back({fAK8, "ak8", kRed});
+            series.push_back({fAK15, "ak15", kGreen+2});
+            series.push_back({fTau, "tau", kBlack});
 
-            effAK4->SetTitle(Form(";%s;Matching Efficiency", xAxisTitle));
-        
-            effAK4->SetMarkerStyle(20);
-            effAK8->SetMarkerStyle(20);
-            effAK15->SetMarkerStyle(20);
-            effTau->SetMarkerStyle(20);
+            TEfficiency* first = nullptr;
+            for (const auto& s : series) {
+                TH1F* h_num = new TH1F(hPrefix + "_" + s.tag, "", nBins, vMin, vMax);
+                ProjectFromTree(s.file, h_num, jetVar, jetCut);
 
-            effAK4->SetMarkerColor(kBlue);
-            effAK8->SetMarkerColor(kRed);
-            effAK15->SetMarkerColor(kGreen+2);
-            effTau->SetMarkerColor(kBlack);
+                TEfficiency* eff = new TEfficiency(*h_num, *h_den);
+                eff->SetMarkerStyle(20);
+                eff->SetMarkerColor(s.color);
+                eff->SetMarkerSize(0.7);
 
-            effAK4->SetMarkerSize(0.7);
-            effAK8->SetMarkerSize(0.7);
-            effAK15->SetMarkerSize(0.7);
-            effTau->SetMarkerSize(0.7);
-
-            effAK4->Draw("AP");
-            gPad->Update(); 
-            auto graphAK4 = effAK4->GetPaintedGraph();
-            if (graphAK4) {
-                graphAK4->GetYaxis()->SetRangeUser(0.0, yMax);
-                graphAK4->GetXaxis()->SetRangeUser(vMin, vMax);
+                if (!first) {
+                    eff->SetTitle(Form(";%s;Matching Efficiency", xAxisTitle));
+                    eff->Draw("AP");
+                    first = eff;
+                    gPad->Update();
+                    if (auto* g = eff->GetPaintedGraph()) {
+                        g->GetYaxis()->SetRangeUser(0.0, yMax);
+                        g->GetXaxis()->SetRangeUser(vMin, vMax);
+                    }
+                } else {
+                    eff->Draw("P SAME");
+                }
             }
-
-            effAK8->Draw("P SAME");
-            effAK15->Draw("P SAME");
-            effTau->Draw("P SAME");
             c1->cd(0);
         };
 
@@ -119,18 +121,26 @@
                 return p;
             };
 
-            TProfile* pAK4  = makeProfile(fAK4,  yAK4,  "ak4",  kBlue);
-            TProfile* pAK8  = makeProfile(fAK8,  yAK8,  "ak8",  kRed);
-            TProfile* pAK15 = makeProfile(fAK15, yAK15, "ak15", kGreen + 2);
-            TProfile* pTau  = makeProfile(fTau, yTau, "tau", kBlack);
+            struct ProfSeries { const char* file; const char* yVar; const char* tag; int color; };
+            std::vector<ProfSeries> series;
+            if (hasAK4) series.push_back({fAK4, yAK4, "ak4", kBlue});
+            series.push_back({fAK8, yAK8, "ak8", kRed});
+            series.push_back({fAK15, yAK15, "ak15", kGreen + 2});
+            series.push_back({fTau, yTau, "tau", kBlack});
 
-            pAK4->SetTitle(Form(";%s;%s", xAxisTitle, yAxisTitle));
-            pAK4->GetYaxis()->SetRangeUser(yMin, yMax);
-            pAK4->GetXaxis()->SetRangeUser(vMin, vMax);
-            pAK4->Draw("P");
-            pAK8->Draw("P SAME");
-            pAK15->Draw("P SAME");
-            pTau->Draw("P SAME");
+            TProfile* first = nullptr;
+            for (const auto& s : series) {
+                TProfile* p = makeProfile(s.file, s.yVar, s.tag, s.color);
+                if (!first) {
+                    p->SetTitle(Form(";%s;%s", xAxisTitle, yAxisTitle));
+                    p->GetYaxis()->SetRangeUser(yMin, yMax);
+                    p->GetXaxis()->SetRangeUser(vMin, vMax);
+                    p->Draw("P");
+                    first = p;
+                } else {
+                    p->Draw("P SAME");
+                }
+            }
 
             if (drawUnityLine) {
                 TLine* unity = new TLine(vMin, 1.0, vMax, 1.0);
@@ -170,12 +180,11 @@
                 int color;
             };
 
-            JetSample jets[] = {
-                {fAK4,  "ak4",  kBlue},
-                {fAK8,  "ak8",  kRed},
-                {fAK15, "ak15", kGreen + 2},
-                {fTau, "tau", kBlack}
-            };
+            std::vector<JetSample> jets;
+            if (hasAK4) jets.push_back({fAK4, "ak4", kBlue});
+            jets.push_back({fAK8, "ak8", kRed});
+            jets.push_back({fAK15, "ak15", kGreen + 2});
+            jets.push_back({fTau, "tau", kBlack});
 
             TEfficiency* first = nullptr;
 
@@ -258,7 +267,6 @@
 
 
         c1->cd(0);
-        TGraph* pAK4_leg  = new TGraph(); pAK4_leg->SetMarkerStyle(20); pAK4_leg->SetMarkerColor(kBlue);     pAK4_leg->SetLineColor(kBlue);
         TGraph* pAK8_leg  = new TGraph(); pAK8_leg->SetMarkerStyle(20); pAK8_leg->SetMarkerColor(kRed);      pAK8_leg->SetLineColor(kRed);
         TGraph* pAK15_leg = new TGraph(); pAK15_leg->SetMarkerStyle(20); pAK15_leg->SetMarkerColor(kGreen+2); pAK15_leg->SetLineColor(kGreen+2);
         TGraph* pTau_leg = new TGraph(); pTau_leg->SetMarkerStyle(20); pTau_leg->SetMarkerColor(kBlack); pTau_leg->SetLineColor(kBlack);
@@ -279,7 +287,10 @@
         leg->SetFillStyle(0);
         leg->SetTextSize(0.022);
         leg->SetEntrySeparation(0.3);
-        leg->AddEntry(pAK4_leg,  "Anti k_{T}, R = 0.4, p_{T} > 30 GeV, |#eta| < 2.5", "lp");
+        if (hasAK4) {
+            TGraph* pAK4_leg = new TGraph(); pAK4_leg->SetMarkerStyle(20); pAK4_leg->SetMarkerColor(kBlue); pAK4_leg->SetLineColor(kBlue);
+            leg->AddEntry(pAK4_leg, "Anti k_{T}, R = 0.4, p_{T} > 30 GeV, |#eta| < 2.5", "lp");
+        }
         leg->AddEntry(pAK8_leg,  "Anti k_{T}, R = 0.8, p_{T} > 200 GeV, |#eta| < 2.5", "lp");
         leg->AddEntry(pAK15_leg, "Anti k_{T}, R = 1.5, p_{T} > 150 GeV, |#eta| < 2.5", "lp");
         leg->AddEntry(pTau_leg, "Skimmed taus after basic selection, |#eta| < 2.5", "lp");

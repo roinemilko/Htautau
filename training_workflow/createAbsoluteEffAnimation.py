@@ -7,7 +7,7 @@ import matplotlib.animation as animation
 import sys
 import uproot
 import gc
-from plot_helpers import *
+from Helpers import *
 from tqdm import tqdm
 
 def main():
@@ -24,8 +24,12 @@ def main():
     parser.add_argument("--use_all", action="store_true", help="Evaluate on all common events")
     parser.add_argument("--frames", type=int, default=50, help="Number of frames for the animation")
     parser.add_argument("--use_weights", action="store_true", help="Apply cross-section weights")
+    parser.add_argument("--bg_xsec", default=None, help="Comma-separated Name=xsec[pb] pairs for background weighting (e.g. TTto4Q=419.7,DYto2Tau=2125), required with --use_weights")
     parser.add_argument("--cms_label", default="Work in Progress")
     args = parser.parse_args()
+    bg_xsec = parse_xsec_arg(args.bg_xsec)
+    if args.use_weights and not bg_xsec:
+        parser.error("--bg_xsec is required when --use_weights is set")
 
     if not (len(args.parquets) == len(args.modes) == len(args.names)):
         print("Error: --parquets, --modes, and --names must have the same length.")
@@ -84,13 +88,13 @@ def main():
 
     raw_bgs_list = args.raw_bgs[0].split(',') if len(args.raw_bgs) == 1 and ',' in args.raw_bgs[0] else args.raw_bgs
     for p in raw_bgs_list:
-        process = next((k for k in XSEC_DICT.keys() if k in p), "unknown")
+        process = next((k for k in bg_xsec.keys() if k in p), "unknown")
         with uproot.open(f"{p}:Events") as tree:
             evts = tree["event"].array(library="np")
             n_gen = tree["NRawEvents"].array(library="np", entry_stop=1)[0]
-        
+
         lumi_pb = LUMI_FB * 1000.0
-        xsec = XSEC_DICT.get(process, XSEC_DICT.get("jets", 1.0))
+        xsec = bg_xsec.get(process, 1.0)
         w = (xsec * lumi_pb) / n_gen if n_gen > 0 and args.use_weights else 1.0
         
         mask = (evts % 2 == 1) if not args.use_all else np.ones_like(evts, dtype=bool)
