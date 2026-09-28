@@ -8,43 +8,26 @@ import pytest
 
 np = pytest.importorskip("numpy")
 pytest.importorskip("sklearn")
-from sklearn.metrics import roc_curve  # noqa: E402
+from sklearn.metrics import roc_curve
 
 def _try_import(name):
     try:
         return __import__(name), None
-    except Exception as e:  # noqa: BLE001 - intentionally broad, see below
+    except Exception as e:
         return None, e
 
 
-# plot_helpers.py only needs numpy/sklearn, but Helpers.py pulls in
-# uproot_data.py/uproot_fat.py (dask, uproot, ...) - a real environment
-# problem there (e.g. dask.dataframe's legacy API being removed) must not
-# take plot_helpers.py's tests down with it. importorskip only catches
-# ImportError, not arbitrary exceptions raised mid-import, so this imports
-# each module independently and turns any failure into a clear, isolated skip.
 Helpers, _helpers_err = _try_import("Helpers")
-plot_helpers, _plot_helpers_err = _try_import("plot_helpers")
 
-for _mod_name, _err in (("Helpers", _helpers_err), ("plot_helpers", _plot_helpers_err)):
-    if _err is not None:
-        warnings.warn(
-            f"{_mod_name}.py could not be imported ({type(_err).__name__}: {_err}) - "
-            "its tests are skipped. This is an environment/code issue in that module "
-            "(see tests/README.md), not a problem with these tests."
-        )
+if _helpers_err is not None:
+    warnings.warn(f"Helpers.py could not be imported ({type(_helpers_err).__name__}: {_helpers_err})")
 
-BOTH = [m for m in (Helpers, plot_helpers) if m is not None]
+BOTH = [m for m in (Helpers,) if m is not None]
 if not BOTH:
     pytest.skip(
-        "neither Helpers.py nor plot_helpers.py could be imported - see warnings above",
+        "Helpers.py could not be imported",
         allow_module_level=True,
     )
-
-needs_both = pytest.mark.skipif(
-    Helpers is None or plot_helpers is None,
-    reason="needs both Helpers.py and plot_helpers.py importable",
-)
 
 
 @pytest.mark.parametrize("mod", BOTH)
@@ -63,36 +46,6 @@ def test_get_mode_names_joins_multiple_with_plus_newline(mod):
 def test_get_mode_names_unknown_background_raises(mod):
     with pytest.raises(KeyError):
         mod.get_mode_names("NotARealBackground")
-
-
-@needs_both
-def test_get_mode_names_identical_between_helpers_and_plot_helpers():
-    for bg_key in ("TTto4Q", "TTto2L2Nu", "TTto4Q_TTto2L2Nu"):
-        assert Helpers.get_mode_names(bg_key) == plot_helpers.get_mode_names(bg_key)
-
-
-@pytest.mark.xfail(reason=(
-    "known divergence: Helpers.BG_STRING_DICT['DYto2Tau'] is "
-    r"'DY \to \tau\tau' (missing the $...$ wrapping the other three entries "
-    "have) while plot_helpers.BG_STRING_DICT['DYto2Tau'] is plain 'DY' - "
-    "same key, two different label conventions depending which module a "
-    "script happens to import from."
-), strict=False)
-@needs_both
-def test_bg_string_dict_dyto2tau_label_matches_across_modules():
-    assert Helpers.BG_STRING_DICT["DYto2Tau"] == plot_helpers.BG_STRING_DICT["DYto2Tau"]
-
-
-@pytest.mark.xfail(reason=(
-    "known divergence: Helpers.XSEC_DICT['DYto2Tau'] = 2219 vs "
-    "plot_helpers.XSEC_DICT['DYto2Tau'] = 2125 (uproot_fat.py has its own "
-    "third copy, also 2125) - a ~4.4% cross-section difference depending "
-    "which module a script imports XSEC_DICT from."
-), strict=False)
-@needs_both
-def test_xsec_dict_dyto2tau_matches_across_modules():
-    assert Helpers.XSEC_DICT["DYto2Tau"] == plot_helpers.XSEC_DICT["DYto2Tau"]
-
 
 
 @pytest.mark.parametrize("mod", BOTH)

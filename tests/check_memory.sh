@@ -31,13 +31,13 @@ threads=$(awk '
 ' training_workflow/Snakefile)
 threads="${threads:-4}"
 
-worker_gb=$(grep -oE "memory_limit='[0-9]+GB'" training_workflow/train_BDT.py | head -1 | grep -oE '[0-9]+')
+worker_gb=$(grep -oE '^worker_memory_gb:[[:space:]]*[0-9]+' config.yaml | grep -oE '[0-9]+' | tail -1)
 worker_gb="${worker_gb:-5}"
 
 per_job_gb=$((threads * worker_gb))
-info "per training job: ${threads} dask workers x ${worker_gb}GB = ${per_job_gb}GB"
+info "currently ~${per_job_gb}GB per train_bdt/run_bdt_inference job)"
 
-safety_factor="0.8"
+safety_factor="0.9"
 usable_gb=$(awk -v gb="$mem_avail_gb" -v f="$safety_factor" 'BEGIN { printf "%.1f", gb * f }')
 max_slots=$(awk -v usable="$usable_gb" -v per_job="$per_job_gb" 'BEGIN {
     v = int(usable / per_job)
@@ -45,10 +45,10 @@ max_slots=$(awk -v usable="$usable_gb" -v per_job="$per_job_gb" 'BEGIN {
 }')
 
 if [[ "$max_slots" -lt 1 ]]; then
-    fail "even a single ${per_job_gb}GB train_bdt/run_bdt_inference job doesn't fit in" \
+    fail "${per_job_gb}GB train_bdt/run_bdt_inference job doesn't fit in" \
          "${usable_gb}GB usable (${safety_factor} x available memory)."
-    info "reduce 'threads: 4' on rule train_bdt/run_bdt_inference in training_workflow/Snakefile," \
-         "or lower memory_limit in train_BDT.py/BDT_inference.py, then re-run this check."
+    info "if you hit an OOM error, lower config.yaml's max_files or" \
+         "worker_memory_gb"
     exit 1
 fi
 pass "max concurrent train jobs on this machine: $max_slots" \
@@ -56,7 +56,7 @@ pass "max concurrent train jobs on this machine: $max_slots" \
 
 configured_slot=$(grep -oE 'bdt_slot=[0-9]+' training_workflow/run.sh | head -1 | grep -oE '[0-9]+')
 if [[ -z "$configured_slot" ]]; then
-    warn "couldn't find a 'bdt_slot=N' default in training_workflow/run.sh to compare against"
+    warn "couldn't find a 'bdt_slot=N' default in training_workflow/run.sh"
     exit 0
 fi
 info "currently configed bdt_slot=${configured_slot}"
@@ -64,8 +64,9 @@ info "currently configed bdt_slot=${configured_slot}"
 if [[ "$configured_slot" -gt "$max_slots" ]]; then
     fail "bdt_slot=${configured_slot} in training_workflow/run.sh requests up to" \
          "$((configured_slot * per_job_gb))GB at once, more than the ~${usable_gb}GB estimated usable" \
-         "on this machine - this is the likely cause of OOM crashes during training/inference."
-    info "lower bdt_slot to $max_slots (or less) in training_workflow/run.sh's --resources flag."
+         "on this machine"
+    info "lower  bdt_slot to $max_slots (or less) in training_workflow/run.sh's --resources flag, or" \
+         "if you hit an OOM error, lower config.yaml's max_files or worker_memory_gb instead."
     exit 1
 fi
 

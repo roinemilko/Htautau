@@ -19,18 +19,19 @@ def main():
     parser.add_argument("--mode", default="tau", choices=["Tau", "AK8", "AK15"], help="Object type to process")
     parser.add_argument("--use_subjets", action="store_true", help="Require 2 subjets and load subjet features")
     parser.add_argument("--use_weights", action="store_true", help="Apply cross section weighting")
+    parser.add_argument("--bg_xsec", default=None, help="Comma-separated Name=xsec[pb] pairs for background weighting (e.g. TTto4Q=419.7,DYto2Tau=2125), required with --use_weights")
     parser.add_argument("--n_workers", type=int, default=4)
+    parser.add_argument("--worker_memory_gb", type=int, default=5, help="Per-worker dask memory_limit in GB")
     args = parser.parse_args()
+    args.bg_xsec = parse_xsec_arg(args.bg_xsec)
 
 
     dask.config.set({
-        'distributed.worker.memory.target': 0.60, 
+        'distributed.worker.memory.target': 0.60,
         'distributed.worker.memory.spill': 0.70,
-        'distributed.worker.memory.pause': 0.85, 
+        'distributed.worker.memory.pause': 0.85,
     })
-    # dashboard_address=":0" lets the OS pick a free port, so concurrent training
-    # jobs (e.g. several Snakemake jobs at once) don't collide on the default :8787.
-    client = Client(n_workers=int(args.n_workers), threads_per_worker=4, memory_limit='5GB', dashboard_address=":0")
+    client = Client(n_workers=int(args.n_workers), threads_per_worker=4, memory_limit=f'{args.worker_memory_gb}GB', dashboard_address=":0")
     print(f"Dask client: {client.dashboard_link}")
 
 

@@ -68,18 +68,6 @@ def load_tau_data(file_path, label, event_offset, weight, process_name, num_taus
 
     return df
 
-XSEC_DICT = {
-    "TTto4Q": 419.7,         # NNLO+NNLL inclusive ttbar * BR(W->qq)^2
-    "TTtoLNu2Q": 405.7,      # NNLO+NNLL inclusive ttbar * 2*BR(W->qq)*BR(W->lv)
-    "TTto2L2Nu": 98,       # NNLO+NNLL inclusive ttbar * BR(W->lv)^2
-    "DYto2Tau": 2125,      # NNLO DYJetsToLL M > 50 GeV
-    
-    
-    "VBF": 0.02939443, 
-    "ggF": 51.72
-}
-
-
 LUMI_FB = 137.0
 
 PROCESS_OFFSETS = {
@@ -90,25 +78,27 @@ PROCESS_OFFSETS = {
     "DYto2Tau": 400_000_000,
 }
 
-def load_mixed_tau_data(paths, label, num_taus=1, variables=None, apply_weights=True):
+def load_mixed_tau_data(paths, label, num_taus=1, variables=None, apply_weights=True, xsec_dict=None):
     if variables is not None:
         variables = sorted(variables)
 
-    lumi_pb = LUMI_FB * 1000.0 
+    xsec_dict = xsec_dict or {}
+
+    lumi_pb = LUMI_FB * 1000.0
     all_dfs = []
-    
+
 
     for path in paths:
         name = os.path.basename(path).replace(".root", "")
         weight = 1.0
 
         if apply_weights:
-            bg_match = next((key for key in XSEC_DICT.keys() if key in path), None)        
+            bg_match = next((key for key in xsec_dict.keys() if key in path), None)
             if bg_match:
                 name = bg_match
                 with uproot.open(f"{path}:Events") as raw_tree:
                     n_gen = raw_tree["NRawEvents"].array(library="np", entry_stop=1)[0]
-                weight = (XSEC_DICT[name] * lumi_pb) / n_gen if n_gen > 0 else 1.0
+                weight = (xsec_dict[name] * lumi_pb) / n_gen if n_gen > 0 else 1.0
                 print(f"Sample {name}: N_gen={n_gen}, Weight={weight:.6e}")
             else:
                 print(f"Sample {name}: Weight={weight:.6e} (Unweighted)")

@@ -36,9 +36,6 @@ D-->F[Model inference]
 | `run_absolute_evaluation_roc` / `_eff` / `_animation` | ROC/rejection, signal-efficiency-vs-pT, and an animated version, with all events, setting unmatched as 0 score |
 | `run_visualize_models` | Renders some sample trees from models |
 
-## Concurrency
-
-Each training job takes quite a bit of memory (up to about 20Gb for my datasets) so concurrency is scaled down from --cores N with dedicated resource pools. Training/inference jobs get one slot by default and the plotting jobs get 4. If your node has better memory you can bypass it with --resources and if you get OOM errors run diagnose.sh to figure out how to scale down.
 
 ### Naming note
 

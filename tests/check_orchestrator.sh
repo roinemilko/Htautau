@@ -1,9 +1,5 @@
 #!/bin/bash
-# Regression tests for reproduce.sh and publish_results.sh's own CLI
-# behavior - the things that were manually verified while building them.
-# Everything here is safe to run against the real repo: it only ever uses
-# --dry-run / --help, an isolated scratch copy, or a real (idempotent) rebuild
-# of RESULTS/.
+# Regression tests for reproduce.sh and publish_results.sh's own CLI behavior
 set -uo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)/lib/common.sh"
 cd "$REPO_ROOT"
@@ -46,13 +42,10 @@ else
     fail_count=$((fail_count + 1))
 fi
 
-# the data stage either runs cleanly (valid proxy) or fails specifically
-# because of the proxy (invalid/missing) - both are acceptable outcomes here,
-# since proxy validity is a property of the machine, not of this repo.
 out=$(./reproduce.sh --stages data --dry-run 2>&1)
 code=$?
 if [[ $code -eq 0 ]]; then
-    pass "reproduce.sh --stages data --dry-run succeeded (grid proxy is valid here)"
+    pass "reproduce.sh --stages data --dry-run succeeded"
 elif echo "$out" | grep -qi "proxy"; then
     pass "reproduce.sh --stages data --dry-run failed for the expected reason (no valid proxy)"
 else
@@ -61,13 +54,11 @@ else
     fail_count=$((fail_count + 1))
 fi
 
-# publish_results.sh rebuilds RESULTS/ cleanly (real run - already designed to
-# be idempotent and safe to re-run at any time)
 if out=$(./publish_results.sh 2>&1); then
-    if [[ -f RESULTS/MANIFEST.md ]]; then
-        pass "publish_results.sh rebuilds RESULTS/MANIFEST.md"
+    if [[ -f RESULTS/MANIFEST.txt ]]; then
+        pass "publish_results.sh rebuilds RESULTS/MANIFEST.txt"
     else
-        fail "publish_results.sh exited 0 but RESULTS/MANIFEST.md is missing"
+        fail "publish_results.sh exited 0 but RESULTS/MANIFEST.txt is missing"
         fail_count=$((fail_count + 1))
     fi
 else

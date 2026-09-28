@@ -42,6 +42,7 @@ _CONFIG_DEFAULTS = {
     "use_all": True,
     "variables": "",
     "fpr": [1.0],
+    "worker_memory_gb": 5,
 }
 for _key, _default in _CONFIG_DEFAULTS.items():
     if config.get(_key) is None:
@@ -66,8 +67,11 @@ FPR_STRS = [f"{f:.6f}" for f in FPRS]
 
 CHANNEL = config["training_channel"]
 SIG_GENERATOR = config["sig_generator"]
+SIG_XSEC = (config.get("signal_xsec") or {}).get(SIG_GENERATOR)
+BG_XSEC = config.get("bg_xsec") or {}
 USE_SUBJETS = config["use_subjets"]
 NUM_TAUS = config["num_taus"]
+WORKER_MEMORY_GB = config["worker_memory_gb"]
 VAR_DIR_PREFIX = f"{config['variables']}/" if config["variables"] != "" else ""
 VAR_SUFFIX = f"_{config['variables']}Vars" if config["variables"] != "" else ""
 
@@ -98,6 +102,31 @@ def get_weight_suffix(bg_dir):
 
 def get_weight_flag(bg_dir):
     return "--use_weights" if use_weights(bg_dir) else ""
+
+def get_bg_xsec_arg(bg_dir):
+    bgs = get_bg_list(bg_dir)
+    missing = [b for b in bgs if b not in BG_XSEC]
+    if missing:
+        raise WorkflowError(
+            f"background(s) {missing} have no entry in bg_xsec in config.yaml "
+            "(required to rescale background weights when combining multiple backgrounds)"
+        )
+    return ",".join(f"{b}={BG_XSEC[b]}" for b in bgs)
+
+def get_raw_bg_weight_flag(bg_dir):
+    if not use_weights(bg_dir):
+        return ""
+    return f"--use_weights --bg_xsec {get_bg_xsec_arg(bg_dir)}"
+
+def get_inference_weight_flag(bg_dir):
+    if not use_weights(bg_dir):
+        return ""
+    if SIG_XSEC is None:
+        raise WorkflowError(
+            f"sig_generator '{SIG_GENERATOR}' has no entry in signal_xsec in config.yaml "
+            "(required to rescale signal weights when combining multiple backgrounds)"
+        )
+    return f"--use_weights --sig_xsec {SIG_XSEC} --bg_xsec {get_bg_xsec_arg(bg_dir)}"
 
 # -----------------------------
 # MAKE PATHS
@@ -266,6 +295,7 @@ rule train_bdt:
         mode = lambda w: get_mode_from_rid(w.r_id),
         num_taus = NUM_TAUS,
         subjet_flag = SUBJET_FLAG,
+        worker_memory_gb = WORKER_MEMORY_GB,
         var_flag = lambda w: f"--variables {' '.join(get_vars_for_mode(get_mode_from_rid(w.r_id), config['variables']))}" if get_vars_for_mode(get_mode_from_rid(w.r_id), config['variables']) else ""
     threads: 4
     resources:
@@ -280,6 +310,7 @@ rule train_bdt:
             {params.subjet_flag} \
             --num_taus {params.num_taus} \
             --n_workers {threads} \
+            --worker_memory_gb {params.worker_memory_gb} \
             {params.var_flag}
         """
 
@@ -300,8 +331,9 @@ rule run_bdt_inference:
         num_taus = NUM_TAUS,
         subjet_flag = SUBJET_FLAG,
         cms_label = config["cms_label"],
+        worker_memory_gb = WORKER_MEMORY_GB,
         var_flag = lambda w: f"--variables {' '.join(get_vars_for_mode(get_mode_from_rid(w.r_id), config['variables']))}" if get_vars_for_mode(get_mode_from_rid(w.r_id), config['variables']) else "",
-        weight_flag = lambda w: get_weight_flag(w.bg_dir)
+        weight_flag = lambda w: get_inference_weight_flag(w.bg_dir)
     threads: 4
     resources:
         bdt_slot = 1
@@ -322,6 +354,7 @@ rule run_bdt_inference:
             --num_taus {params.num_taus} \
             {params.var_flag} \
             --n_workers {threads} \
+            --worker_memory_gb {params.worker_memory_gb} \
             {params.weight_flag}
         """
 
@@ -412,7 +445,7 @@ rule run_absolute_evaluation_roc:
         subjet_flag = SUBJET_FLAG,
         use_all_flag = USE_ALL_FLAG,
         bg_name = lambda w: w.bg_dir,
-        weight_flag = lambda w: get_weight_flag(w.bg_dir),
+        weight_flag = lambda w: get_raw_bg_weight_flag(w.bg_dir),
         cms_label = config["cms_label"]
     resources:
         plot_slot = 1
@@ -451,7 +484,7 @@ rule run_absolute_evaluation_eff:
         bg_name = lambda w: w.bg_dir,
         cms_label = config["cms_label"],
         fpr = lambda wildcards: float(wildcards.fpr_str) / 100.0,
-        weight_flag = lambda w: get_weight_flag(w.bg_dir)
+        weight_flag = lambda w: get_raw_bg_weight_flag(w.bg_dir)
     resources:
         plot_slot = 1
     shell:

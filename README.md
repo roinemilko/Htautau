@@ -55,13 +55,6 @@ If it falls apart you can try to find the root cause by running
 ./diagnose.sh              
 ```
 
-`--cores N` is a ceiling on parallelism, not a guarantee it's all used the same
-way everywhere: `training_workflow/run.sh` additionally caps how many BDT
-training/inference jobs and how many plotting/comparison jobs can run at once
-(independent of `--cores`), since those are memory-heavy per job — see
-`training_workflow/README.md#concurrency--memory`.
-## RESULTS/
-
 ```
 RESULTS/
   <dataset>/
@@ -71,7 +64,7 @@ RESULTS/
     training/              # BDTs and all tagging efficiency results for this dataset
                             # (only present for datasets training_workflow ran on, e.g. MADGRAPH)
   config.snapshot.yaml    # copy of config.yaml from runtime
-  MANIFEST.md             # result timestamp for safety, i.e. results won't be overwritten if this not present
+  MANIFEST.txt             # result timestamp for safety, i.e. results won't be overwritten if this not present
 ```
 
 ## Repo layout
@@ -120,6 +113,8 @@ The idea here is that you can set local or DAS paths to datasets in `_dirs` dict
 | `normalize` | `"true"` | dist. plots normalized to [0,1] |
 
 ### Training
+
+Note: Training doesn't respect --cores N but instead has dedicated resource pools to use everything for one model at a time: there are 4 workes per model so total memory usage will be 4 * worker_memory_gb.
 
 | Key | Default | Meaning |
 |---|---|---|

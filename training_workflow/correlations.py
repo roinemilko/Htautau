@@ -70,8 +70,10 @@ def main():
     parser.add_argument("--mode", default="tau", choices=["Tau", "AK8", "AK15"], help="Object type to process")
     parser.add_argument("--use_subjets", action="store_true", help="Require 2 subjets and load subjet features (AK8/AK15 only)")
     parser.add_argument("--use_weights", action="store_true", help="Calculate and use event weights")
+    parser.add_argument("--bg_xsec", default=None, help="Comma-separated Name=xsec[pb] pairs for background weighting (e.g. TTto4Q=419.7,DYto2Tau=2125), required with --use_weights")
     args = parser.parse_args()
-    
+    args.bg_xsec = parse_xsec_arg(args.bg_xsec)
+
     df_sig, df_bg = load_data(
         sig_path=args.sig,
         bg_path=args.bg,
