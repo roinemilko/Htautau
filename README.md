@@ -39,7 +39,7 @@ are a viable option for future CMS analyses.
 git clone git@github.com:roinemilko/Htautau.git
 cd Htautau
 voms-proxy-init --voms cms 
-./reproduce.sh --cores 24
+./reproduce.sh --cores 20
 ```
 
 Useful flags (`./reproduce.sh --help` for the full list):
@@ -101,8 +101,10 @@ The idea here is that you can set local or DAS paths to datasets in `_dirs` dict
 | `max_files` | `150` | how many ROOT files per dataset |
 | `signal_dirs` | `{}` | `name: path` for local datasets |
 | `signal_das` | `{}` | `name: path` for DAS queries |
+| `signal_xsec` | `{}` | `name: cross section (pb)` for signals |
 | `bg_dirs` | `{}` |  |
 | `bg_das` | `{}` |  |
+| `bg_xsec` | `{}` | `name: cross section (pb)` for backgrounds |
 
 ### Plotting
 
@@ -129,6 +131,8 @@ Note: Training doesn't respect --cores N but instead has dedicated resource pool
 | `use_all` | `False` | use all of the data for results or unseen validation set |
 | `variables` | `"greedy"` | you can define sets of fields to be used for training in `var_sets` dictionary below (empty = all available) |
 | `fpr` | `[1.0]` | list of false-positive rates to plot (as **percent**) |
+| `use_weights` | `False` | apply per-event weights (xsec-based) during training |
+| `worker_memory_gb` | `5` | memory (GB) allocated per training worker |
 
 
 

@@ -3,7 +3,7 @@ data: "testone, testtwo"
 channel: "both"
 exclude: "AK4"
 bg-channels: "DYto2Tau, TTto2L2Nu, TTto4Q, TTtoLNu2Q"
-max_files: 25
+max_files: 125
 
 # Directory / DAS path for signals
 signal_dirs:
